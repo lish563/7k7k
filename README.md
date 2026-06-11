@@ -14,7 +14,7 @@
 
 > ## **技术栈**
 
-HTML，css3，js，git
+HTML，css3，git
 
 > ## **开发人员**
 
