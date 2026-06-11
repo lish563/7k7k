@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>古风五子棋</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            /* 宣纸纹理背景 */
+            background-color: #f5efe0;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23d9c7b8' fill-opacity='0.2' fill-rule='evenodd'/%3E%3C/svg%3E");
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 20px;
+            font-family: "KaiTi", "STKaiti", "微软雅黑", serif;
+        }
+
+        /* 标题样式 古风书法 */
+        .main-title {
+            font-size: 38px;
+            color: #8c3123;
+            font-weight: bold;
+            text-shadow: 2px 2px 3px rgba(0,0,0,0.15);
+            letter-spacing: 8px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #b88646;
+            padding-bottom: 10px;
+        }
+
+        /* 功能按钮栏 */
+        .control-bar {
+            display: flex;
+            gap: 18px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            font-size: 16px;
+            font-family: "KaiTi", serif;
+            background: linear-gradient(#c98b4e, #a06b36);
+            color: #fffef8;
+            border: 2px solid #7a4f2b;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+        }
+
+        .btn:hover {
+            background: linear-gradient(#d89c5f, #b07b46);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        /* 棋盘外层容器 雕花边框 */
+        .board-wrap {
+            position: relative;
+            border: 12px solid #8c5a2c;
+            border-radius: 8px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+
+        /* 主棋盘 古木色 */
+        .board {
+            width: 560px;
+            height: 560px;
+            background-color: #e8d4b9;
+            background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23c9b49c' fill-opacity='0.15'%3E%3Cpath d='M0 38.59l2.83-2.83 1.41 1.41L1.41 40H0v-1.41zM0 1.4l2.83 2.83 1.41-1.41L1.41 0H0v1.41zM38.59 40l-2.83-2.83 1.41-1.41L40 38.59V40h-1.41zM40 1.41l-2.83 2.83-1.41-1.41L38.59 0H40v1.41zM20 18.6l2.83-2.83 1.41 1.41-2.83 2.83 2.83 2.83-1.41 1.41-2.83-2.83-2.83 2.83-1.41-1.41 2.83-2.83-2.83-2.83 1.41-1.41 2.83 2.83z'/%3E%3C/g%3E%3C/svg%3E");
+            position: relative;
+        }
+
+        /* 棋盘线条 */
+        .line {
+            position: absolute;
+            background: #5c4033;
+        }
+
+        /* 棋子样式 圆润质感 */
+        .piece {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+            pointer-events: none;
+        }
+
+        .black {
+            background: radial-gradient(#333, #111);
+            border: 1px solid #000;
+        }
+
+        .white {
+            background: radial-gradient(#fff, #e9e9e9);
+            border: 1px solid #ccc;
+        }
+
+        /* 提示文字 */
+        .game-tips {
+            margin-top: 18px;
+            font-size: 17px;
+            color: #704c2a;
+            letter-spacing: 2px;
+        }
+
+        /* 遮罩层 */
+        .mask {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(60, 40, 20, 0.25);
+            z-index: 98;
+            display: none;
+        }
+
+        /* 胜利弹窗 古风样式 */
+        .win-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 320px;
+            padding: 35px 25px;
+            background: #f8f1e3;
+            border: 4px double #8c5a2c;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            z-index: 99;
+            display: none;
+        }
+
+        .win-modal h3 {
+            font-size: 26px;
+            color: #8c3123;
+            margin-bottom: 25px;
+            letter-spacing: 4px;
+        }
+
+        .win-modal .btn {
+            margin: 0 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1 class="main-title">古 风 五 子 棋</h1>
+
+    <div class="control-bar">
+        <button class="btn" id="restart">重新开局</button>
+        <button class="btn" id="undo">悔棋一步</button>
+    </div>
+
+    <div class="board-wrap">
+        <div class="board" id="board"></div>
+        <div class="mask" id="mask"></div>
+        <div class="win-modal" id="winModal">
+            <h3 id="winText"></h3>
+            <button class="btn" id="modalRestart">再来一局</button>
+            <button class="btn" id="closeModal">关闭</button>
+        </div>
+    </div>
+
+    <div class="game-tips">黑棋先行 · 五子相连 即为得胜</div>
+
+    <script>
+        const board = document.getElementById('board');
+        const restartBtn = document.getElementById('restart');
+        const undoBtn = document.getElementById('undo');
+        const winModal = document.getElementById('winModal');
+        const winText = document.getElementById('winText');
+        const mask = document.getElementById('mask');
+        const modalRestart = document.getElementById('modalRestart');
+        const closeModal = document.getElementById('closeModal');
+
+        const size = 15;
+        const gap = 560 / size;
+        let currentColor = 'black';
+        let gameOver = false;
+        let chessMap = Array.from({ length: size }, () => Array(size).fill(0));
+        let history = [];
+
+        // 初始化游戏
+        function initBoard() {
+            board.innerHTML = '';
+            currentColor = 'black';
+            gameOver = false;
+            chessMap = Array.from({ length: size }, () => Array(size).fill(0));
+            history = [];
+            winModal.style.display = 'none';
+            mask.style.display = 'none';
+            drawLines();
+        }
+
+        // 绘制棋盘线条
+        function drawLines() {
+            for (let i = 0; i < size; i++) {
+                const line = document.createElement('div');
+                line.className = 'line';
+                line.style.width = '544px';
+                line.style.height = '1px';
+                line.style.left = '8px';
+                line.style.top = (i * gap + gap / 2) + 'px';
+                board.appendChild(line);
+            }
+            for (let i = 0; i < size; i++) {
+                const line = document.createElement('div');
+                line.className = 'line';
+                line.style.width = '1px';
+                line.style.height = '544px';
+                line.style.left = (i * gap + gap / 2) + 'px';
+                line.style.top = '8px';
+                board.appendChild(line);
+            }
+        }
+
+        // 创建棋子
+        function createPiece(x, y, color) {
+            const piece = document.createElement('div');
+            piece.className = `piece ${color}`;
+            piece.style.left = (x * gap + gap / 2) + 'px';
+            piece.style.top = (y * gap + gap / 2) + 'px';
+            board.appendChild(piece);
+            return piece;
+        }
+
+        // 胜负判断
+        function checkWin(x, y, color) {
+            const val = color === 'black' ? 1 : 2;
+            const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+            for (let [dx, dy] of dirs) {
+                let count = 1;
+                for (let i = 1; i < 5; i++) {
+                    let nx = x + dx * i;
+                    let ny = y + dy * i;
+                    if (nx >= 0 && nx < size && ny >= 0 && ny < size && chessMap[ny][nx] === val) count++;
+                    else break;
+                }
+                for (let i = 1; i < 5; i++) {
+                    let nx = x - dx * i;
+                    let ny = y - dy * i;
+                    if (nx >= 0 && nx < size && ny >= 0 && ny < size && chessMap[ny][nx] === val) count++;
+                    else break;
+                }
+                if (count >= 5) return true;
+            }
+            return false;
+        }
+
+        // 弹出胜利窗口
+        function showWinModal(winner) {
+            gameOver = true;
+            winText.innerText = `「${winner}」得胜！`;
+            winModal.style.display = 'block';
+            mask.style.display = 'block';
+        }
+
+        // 落子逻辑
+        board.addEventListener('click', (e) => {
+            if (gameOver) return;
+            const rect = board.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / gap);
+            const y = Math.floor((e.clientY - rect.top) / gap);
+
+            if (x < 0 || x >= size || y < 0 || y >= size || chessMap[y][x] !== 0) return;
+
+            const pieceDom = createPiece(x, y, currentColor);
+            const mark = currentColor === 'black' ? 1 : 2;
+            chessMap[y][x] = mark;
+            history.push({ x, y, color: currentColor, dom: pieceDom });
+
+            if (checkWin(x, y, currentColor)) {
+                const winner = currentColor === 'black' ? '黑棋' : '白棋';
+                showWinModal(winner);
+                return;
+            }
+            currentColor = currentColor === 'black' ? 'white' : 'black';
+        });
+
+        // 悔棋
+        undoBtn.onclick = () => {
+            if (history.length === 0 || gameOver) return;
+            const lastStep = history.pop();
+            chessMap[lastStep.y][lastStep.x] = 0;
+            board.removeChild(lastStep.dom);
+            currentColor = currentColor === 'black' ? 'white' : 'black';
+        };
+
+        // 重置游戏
+        restartBtn.onclick = initBoard;
+        modalRestart.onclick = initBoard;
+        closeModal.onclick = () => {
+            winModal.style.display = 'none';
+            mask.style.display = 'none';
+        };
+
+        initBoard();
+    </script>
+</body>
+</html>

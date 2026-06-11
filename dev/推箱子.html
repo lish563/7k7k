@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>推箱子 · 经典益智游戏</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(145deg, #2a6b3c 0%, #1d4d2a 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Poppins', 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* 游戏主容器 */
+        .game-container {
+            background: #4a3b2c;
+            border-radius: 56px;
+            padding: 24px 28px 28px 28px;
+            box-shadow: 0 25px 40px rgba(0, 0, 0, 0.5), inset 0 1px 3px rgba(255, 255, 255, 0.2);
+        }
+
+        /* 画布区域 */
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 24px;
+            box-shadow: 0 0 0 6px #8b6946, 0 12px 28px black;
+            background-color: #d9c8a9;
+            cursor: pointer;
+        }
+
+        /* 信息面板 */
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            margin-bottom: 12px;
+            background: #2e241f;
+            padding: 10px 22px;
+            border-radius: 60px;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .score-box {
+            background: #1f1912;
+            padding: 6px 20px;
+            border-radius: 40px;
+            color: #f7d44a;
+            font-weight: bold;
+            font-size: 26px;
+            font-family: monospace;
+            box-shadow: inset 0 0 6px #5f4c2e, 0 3px 6px rgba(0,0,0,0.3);
+            letter-spacing: 2px;
+        }
+
+        .level-box {
+            background: #1f1912;
+            padding: 6px 20px;
+            border-radius: 40px;
+            color: #9fd3ff;
+            font-weight: bold;
+            font-size: 22px;
+            font-family: monospace;
+        }
+
+        button {
+            background: #e0a82b;
+            border: none;
+            font-size: 18px;
+            font-weight: bold;
+            font-family: inherit;
+            padding: 8px 24px;
+            border-radius: 40px;
+            color: #2b2b1a;
+            cursor: pointer;
+            transition: all 0.12s linear;
+            box-shadow: 0 5px 0 #7a4c1a;
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #7a4c1a;
+        }
+
+        .status {
+            background: #000000aa;
+            padding: 6px 20px;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #f7ecc7;
+            backdrop-filter: blur(4px);
+        }
+
+        .controls-tip {
+            text-align: center;
+            margin-top: 18px;
+            color: #f9e0a0;
+            font-size: 13px;
+            background: #1e2a1a80;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 6px 20px;
+            border-radius: 40px;
+            font-weight: 500;
+        }
+
+        @media (max-width: 560px) {
+            .game-container { padding: 16px; }
+            .score-box { font-size: 20px; padding: 4px 16px; }
+            .level-box { font-size: 18px; }
+            button { font-size: 14px; padding: 6px 18px; }
+        }
+    </style>
+</head>
+<body>
+<div>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="480" height="480"></canvas>
+
+        <div class="info-panel">
+            <div class="score-box">
+                📦 目标: <span id="targetCount">0</span>
+            </div>
+            <div class="level-box">
+                🧩 关卡 <span id="levelNum">1</span>
+            </div>
+            <button id="resetBtn">🔄 重置当前关</button>
+            <button id="nextBtn">⏩ 下一关</button>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+            <div class="status" id="gameStatus">✨ 方向键移动 ✨</div>
+            <div class="controls-tip">⬆ ⬇ ⬅ ➡   &nbsp;&nbsp;WASD 也支持</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ---------- 经典推箱子关卡数据 (多关) ----------
+        // 地图符号: 0=空地, 1=墙, 2=玩家, 3=箱子, 4=目标点, 5=玩家站在目标点, 6=箱子已在目标点
+        // 为了显示美观，将存储为数字矩阵
+        
+        // 预置5个有趣关卡
+        const levels = [
+            // 关卡1: 新手入门
+            {
+                width: 10, height: 10,
+                map: [
+                    [1,1,1,1,1,1,1,1,1,1],
+                    [1,0,0,0,0,0,0,0,0,1],
+                    [1,0,2,0,3,0,0,4,0,1],
+                    [1,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,3,0,0,0,0,0,1],
+                    [1,0,0,0,0,4,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,1],
+                    [1,1,1,1,1,1,1,1,1,1]
+                ]
+            },
+            // 关卡2: 简单转折
+            {
+                width: 10, height: 10,
+                map: [
+                    [1,1,1,1,1,1,1,1,1,1],
+                    [1,0,0,0,0,0,1,0,0,1],
+                    [1,0,2,0,3,0,1,4,0,1],
+                    [1,0,0,0,0,0,1,0,0,1],
+                    [1,0,1,1,1,1,1,0,0,1],
+                    [1,0,0,0,0,0,0,0,3,1],
+                    [1,0,4,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,1],
+                    [1,1,1,1,1,1,1,1,1,1]
+                ]
+            },
+            // 关卡3: 双箱子挑战
+            {
+                width: 10, height: 10,
+                map: [
+                    [1,1,1,1,1,1,1,1,1,1],
+                    [1,0,0,0,0,0,0,4,0,1],
+                    [1,0,2,0,3,0,0,0,0,1],
+                    [1,0,0,1,0,1,0,0,0,1],
+                    [1,0,3,0,0,0,1,0,0,1],
+                    [1,0,0,0,4,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,3,0,1],
+                    [1,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,4,0,1],
+                    [1,1,1,1,1,1,1,1,1,1]
+                ]
+            },
+            // 关卡4: 经典转角
+            {
+                width: 10, height: 10,
+                map: [
+                    [1,1,1,1,1,1,1,1,1,1],
+                    [1,0,0,0,0,1,0,0,0,1],
+                    [1,0,2,3,0,1,0,4,0,1],
+                    [1,0,0,0,0,1,0,0,0,1],
+                    [1,0,1,1,1,1,0,0,0,1],
+                    [1,0,0,0,0,0,0,3,0,1],
+                    [1,0,4,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,1],
+                    [1,1,1,1,1,1,1,1,1,1]
+                ]
+            },
+            // 关卡5: 进阶拥挤 (趣味)
+            {
+                width: 12, height: 12,
+                map: [
+                    [1,1,1,1,1,1,1,1,1,1,1,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,2,0,3,0,1,0,4,0,0,1],
+                    [1,0,0,0,0,0,1,0,0,0,0,1],
+                    [1,0,1,1,3,1,1,0,0,3,0,1],
+                    [1,0,0,0,0,0,0,0,4,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,4,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,1,0,0,0,0,1],
+                    [1,0,0,0,3,0,1,0,0,4,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,1,1,1,1,1,1,1,1,1,1,1]
+                ]
+            }
+        ];
+        
+        // 当前关卡索引
+        let currentLevelIdx = 0;      // 0-based
+        let currentMap = [];           // 二维数组，存储当前地图数据
+        let mapWidth = 0, mapHeight = 0;
+        let playerPos = { x: -1, y: -1 };
+        let targetsTotal = 0;          // 总目标点数
+        let boxesOnTarget = 0;         // 已归位的箱子数
+        
+        // DOM 元素
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const targetCountSpan = document.getElementById('targetCount');
+        const levelNumSpan = document.getElementById('levelNum');
+        const gameStatusSpan = document.getElementById('gameStatus');
+        const resetBtn = document.getElementById('resetBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        
+        // 方格尺寸 (动态计算，基于画布宽/高度)
+        let cellW = 0, cellH = 0;
+        
+        // 初始化/加载关卡
+        function loadLevel(levelIndex) {
+            if (levelIndex >= levels.length) {
+                // 通关啦！显示胜利，停留在最后一关但显示祝贺
+                gameStatusSpan.innerText = '🎉 恭喜通关！点击重置回味 🎉';
+                return;
+            }
+            const levelData = levels[levelIndex];
+            mapWidth = levelData.width;
+            mapHeight = levelData.height;
+            // 深拷贝地图
+            currentMap = levelData.map.map(row => [...row]);
+            
+            // 重新统计目标点和玩家位置，箱子归位计数
+            targetsTotal = 0;
+            boxesOnTarget = 0;
+            for (let y = 0; y < mapHeight; y++) {
+                for (let x = 0; x < mapWidth; x++) {
+                    const val = currentMap[y][x];
+                    if (val === 4 || val === 5 || val === 6) {
+                        if (val === 4) targetsTotal++;
+                        else if (val === 5) targetsTotal++;  // 玩家站在目标点也算一个目标点
+                        else if (val === 6) { targetsTotal++; boxesOnTarget++; }
+                    }
+                    if (val === 2 || val === 5) {
+                        playerPos = { x, y };
+                    }
+                    // 额外修正箱子在目标点计数
+                    if (val === 6) boxesOnTarget++;
+                }
+            }
+            // 重新修正: 因为目标点统计时如果既有箱子又有目标点，上面已加，确保boxesOnTarget准确
+            boxesOnTarget = 0;
+            for (let y = 0; y < mapHeight; y++) {
+                for (let x = 0; x < mapWidth; x++) {
+                    if (currentMap[y][x] === 6) boxesOnTarget++;
+                }
+            }
+            
+            updateUI();
+            drawMap();
+            checkVictory();
+        }
+        
+        // 更新UI文本
+        function updateUI() {
+            levelNumSpan.innerText = (currentLevelIdx + 1).toString();
+            targetCountSpan.innerText = `${boxesOnTarget}/${targetsTotal}`;
+        }
+        
+        // 胜利检测
+        function checkVictory() {
+            if (boxesOnTarget === targetsTotal && targetsTotal > 0) {
+                gameStatusSpan.innerText = '🎉 过关成功！点击下一关 🎉';
+                // 如果已通关所有关卡，不自动跳转，等待用户按下一关
+                if (currentLevelIdx + 1 >= levels.length) {
+                    gameStatusSpan.innerText = '🏆 恭喜全通关！太厉害了 🏆';
+                }
+                return true;
+            } else {
+                gameStatusSpan.innerText = '🧩 推动箱子到黄色星标处';
+                return false;
+            }
+        }
+        
+        // 重置当前关卡
+        function resetCurrentLevel() {
+            loadLevel(currentLevelIdx);
+            gameStatusSpan.innerText = '🧩 已重置，继续挑战';
+            drawMap();
+        }
+        
+        // 下一关
+        function nextLevel() {
+            if (currentLevelIdx + 1 < levels.length) {
+                currentLevelIdx++;
+                loadLevel(currentLevelIdx);
+                drawMap();
+            } else {
+                if (boxesOnTarget === targetsTotal && targetsTotal > 0) {
+                    gameStatusSpan.innerText = '✨ 你已经完成所有关卡！真棒 ✨';
+                } else {
+                    gameStatusSpan.innerText = '🏁 已经是最后一关，通关后再重置或重新挑战吧';
+                }
+            }
+        }
+        
+        // 移动尝试 dx,dy 方向
+        function tryMove(dx, dy) {
+            if (!playerPos) return false;
+            const px = playerPos.x;
+            const py = playerPos.y;
+            const newX = px + dx;
+            const newY = py + dy;
+            // 边界检查
+            if (newX < 0 || newX >= mapWidth || newY < 0 || newY >= mapHeight) return false;
+            
+            const targetCell = currentMap[newY][newX];
+            // 1. 如果前面是墙
+            if (targetCell === 1) return false;
+            
+            // 2. 如果是箱子 (3 普通箱子 或 6 已经在目标上的箱子)
+            const isBox = (targetCell === 3 || targetCell === 6);
+            if (isBox) {
+                const pushX = newX + dx;
+                const pushY = newY + dy;
+                if (pushX < 0 || pushX >= mapWidth || pushY < 0 || pushY >= mapHeight) return false;
+                const pushCell = currentMap[pushY][pushX];
+                // 箱子前面不能是墙 或 箱子
+                if (pushCell === 1 || pushCell === 3 || pushCell === 6) return false;
+                
+                // 可以推箱子
+                // 保存旧箱子类型
+                const wasBoxOnTarget = (targetCell === 6);
+                // 推前面的格子
+                const isPushTarget = (pushCell === 4);  // 目标点
+                // 1. 更新推到的位置
+                if (isPushTarget) {
+                    currentMap[pushY][pushX] = 6;   // 箱子归位
+                } else {
+                    currentMap[pushY][pushX] = 3;   // 普通箱子
+                }
+                // 2. 原箱子位置变成玩家（需要考虑原箱子位置原来是不是目标点）
+                const originalBoxPosWasTarget = wasBoxOnTarget;
+                if (originalBoxPosWasTarget) {
+                    currentMap[newY][newX] = 5;     // 玩家站在目标点
+                } else {
+                    currentMap[newY][newX] = 2;     // 普通玩家
+                }
+                // 3. 清除旧玩家位置
+                const wasPlayerOnTarget = (currentMap[py][px] === 5);
+                if (wasPlayerOnTarget) {
+                    currentMap[py][px] = 4;
+                } else {
+                    currentMap[py][px] = 0;
+                }
+                // 更新playerPos
+                playerPos = { x: newX, y: newY };
+                
+                // 重新统计箱子归位数量
+                updateBoxesCount();
+                drawMap();
+                checkVictory();
+                return true;
+            }
+            else {
+                // 普通移动 (空地/目标点)
+                const wasOnTarget = (currentMap[py][px] === 5);
+                const isTarget = (targetCell === 4);
+                // 移动玩家
+                if (isTarget) {
+                    currentMap[newY][newX] = 5;
+                } else {
+                    currentMap[newY][newX] = 2;
+                }
+                // 清空原位置
+                if (wasOnTarget) {
+                    currentMap[py][px] = 4;
+                } else {
+                    currentMap[py][px] = 0;
+                }
+                playerPos = { x: newX, y: newY };
+                drawMap();
+                return true;
+            }
+        }
+        
+        // 重新统计箱子在目标点数量
+        function updateBoxesCount() {
+            let count = 0;
+            for (let y = 0; y < mapHeight; y++) {
+                for (let x = 0; x < mapWidth; x++) {
+                    if (currentMap[y][x] === 6) count++;
+                }
+            }
+            boxesOnTarget = count;
+            // 重新计算目标点总数（重新扫描：4 目标点 + 5 玩家在目标点 + 6 箱子在目标点）
+            let totalTargets = 0;
+            for (let y = 0; y < mapHeight; y++) {
+                for (let x = 0; x < mapWidth; x++) {
+                    const v = currentMap[y][x];
+                    if (v === 4 || v === 5 || v === 6) totalTargets++;
+                }
+            }
+            targetsTotal = totalTargets;
+            updateUI();
+        }
+        
+        // ---------- 绘制华丽游戏界面 ----------
+        function drawMap() {
+            if (!ctx) return;
+            // 动态计算格子尺寸
+            const canvasSize = 480;  // 固定画布480px
+            cellW = canvasSize / mapWidth;
+            cellH = canvasSize / mapHeight;
+            canvas.width = canvasSize;
+            canvas.height = canvasSize;
+            
+            for (let row = 0; row < mapHeight; row++) {
+                for (let col = 0; col < mapWidth; col++) {
+                    const val = currentMap[row][col];
+                    const x = col * cellW;
+                    const y = row * cellH;
+                    
+                    // 绘制地板基础 (空地/背景)
+                    if (val === 0 || val === 2 || val === 3 || val === 5 || val === 6) {
+                        ctx.fillStyle = '#eeddaa';
+                        ctx.fillRect(x, y, cellW, cellH);
+                        // 网格线
+                        ctx.strokeStyle = '#b59a6b';
+                        ctx.lineWidth = 0.5;
+                        ctx.strokeRect(x, y, cellW, cellH);
+                    } else if (val === 1) { // 墙壁
+                        ctx.fillStyle = '#6b4c3b';
+                        ctx.fillRect(x, y, cellW, cellH);
+                        ctx.fillStyle = '#8b6248';
+                        ctx.fillRect(x+2, y+2, cellW-4, cellH-4);
+                        ctx.fillStyle = '#a57c5a';
+                        ctx.fillRect(x+4, y+4, cellW-8, cellH-8);
+                    } else if (val === 4) { // 目标点
+                        ctx.fillStyle = '#eeddaa';
+                        ctx.fillRect(x, y, cellW, cellH);
+                        // 绘制星标✨
+                        ctx.fillStyle = '#f5c542';
+                        ctx.beginPath();
+                        ctx.arc(x + cellW/2, y + cellH/2, cellW*0.28, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.fillStyle = '#f0b27a';
+                        ctx.beginPath();
+                        ctx.arc(x + cellW/2 - 2, y + cellH/2 - 2, cellW*0.08, 0, Math.PI*2);
+                        ctx.fill();
+                    }
+                    
+                    // 绘制玩家
+                    if (val === 2 || val === 5) {
+                        const centerX = x + cellW/2;
+                        const centerY = y + cellH/2;
+                        ctx.fillStyle = '#3c8fd9';
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, cellW*0.32, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath();
+                        ctx.arc(centerX-3, centerY-3, cellW*0.08, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.fillStyle = '#2c2c2c';
+                        ctx.beginPath();
+                        ctx.arc(centerX-3, centerY-3, cellW*0.04, 0, Math.PI*2);
+                        ctx.fill();
+                        // 帽子
+                        ctx.fillStyle = '#e0642e';
+                        ctx.fillRect(centerX-8, centerY-12, 16, 8);
+                    }
+                    
+                    // 绘制箱子
+                    if (val === 3) {
+                        const left = x + 4;
+                        const top = y + 4;
+                        ctx.fillStyle = '#bc8f6b';
+                        ctx.fillRect(left, top, cellW-8, cellH-8);
+                        ctx.fillStyle = '#9c6e48';
+                        ctx.fillRect(left+2, top+2, cellW-12, cellH-12);
+                        ctx.fillStyle = '#6b3e1c';
+                        ctx.fillRect(left+4, top+4, cellW-16, cellH-16);
+                    } else if (val === 6) { // 箱子已在目标点
+                        const left = x + 4;
+                        const top = y + 4;
+                        ctx.fillStyle = '#f7bc45';
+                        ctx.fillRect(left, top, cellW-8, cellH-8);
+                        ctx.fillStyle = '#ffdb8e';
+                        ctx.fillRect(left+2, top+2, cellW-12, cellH-12);
+                        ctx.fillStyle = '#d4942b';
+                        ctx.fillRect(left+4, top+4, cellW-16, cellH-16);
+                        // 加光效
+                        ctx.fillStyle = '#ffdd88';
+                        ctx.beginPath();
+                        ctx.arc(x+cellW/2, y+cellH/2, cellW*0.18, 0, Math.PI*2);
+                        ctx.fill();
+                    }
+                }
+            }
+            
+            // 额外绘制一些装饰阴影
+            ctx.strokeStyle = '#d4b27a';
+            ctx.lineWidth = 1;
+            for (let row = 0; row <= mapHeight; row++) {
+                ctx.beginPath();
+                ctx.moveTo(0, row * cellH);
+                ctx.lineTo(canvas.width, row * cellH);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(row * cellW, 0);
+                ctx.lineTo(row * cellW, canvas.height);
+                ctx.stroke();
+            }
+        }
+        
+        // 键盘控制
+        function handleKeydown(e) {
+            const key = e.key;
+            // 阻止箭头键和WASD滚动页面
+            if (key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight' ||
+                key === 'w' || key === 'W' || key === 's' || key === 'S' || key === 'a' || key === 'A' || key === 'd' || key === 'D') {
+                e.preventDefault();
+            }
+            let dx = 0, dy = 0;
+            switch(key) {
+                case 'ArrowUp': case 'w': case 'W': dy = -1; break;
+                case 'ArrowDown': case 's': case 'S': dy = 1; break;
+                case 'ArrowLeft': case 'a': case 'A': dx = -1; break;
+                case 'ArrowRight': case 'd': case 'D': dx = 1; break;
+                default: return;
+            }
+            tryMove(dx, dy);
+            // 每移动后检测胜利自动下关? 根据设计，过关后显示按钮，不自动跳，让用户按下一关
+            if (boxesOnTarget === targetsTotal && targetsTotal > 0) {
+                // 胜利的时候，如果已经胜利但用户操作时候可以提示
+                if (currentLevelIdx + 1 < levels.length) {
+                    gameStatusSpan.innerText = '🎉 通关！点击「下一关」继续 🎉';
+                } else {
+                    gameStatusSpan.innerText = '🏆 完美通关！你是推箱子大师 🏆';
+                }
+            }
+        }
+        
+        // 重置并重新开始
+        function resetGameAll() {
+            currentLevelIdx = 0;
+            loadLevel(0);
+            drawMap();
+        }
+        
+        // 监听事件 + 初始化
+        window.addEventListener('load', () => {
+            loadLevel(0);
+            window.addEventListener('keydown', handleKeydown);
+            resetBtn.addEventListener('click', () => {
+                resetCurrentLevel();
+            });
+            nextBtn.addEventListener('click', () => {
+                if (boxesOnTarget === targetsTotal && targetsTotal > 0) {
+                    if (currentLevelIdx + 1 < levels.length) {
+                        currentLevelIdx++;
+                        loadLevel(currentLevelIdx);
+                        drawMap();
+                    } else {
+                        gameStatusSpan.innerText = '🎉 恭喜通关全部关卡！点击重置回味 🎉';
+                    }
+                } else {
+                    gameStatusSpan.innerText = '⚠️ 请先将所有箱子推到星标上 ⚠️';
+                    setTimeout(() => {
+                        if (boxesOnTarget !== targetsTotal) gameStatusSpan.innerText = '🧩 推动箱子到黄色星标处';
+                    }, 1200);
+                }
+            });
+        });
+    })();
+</script>
+</body>
+</html>

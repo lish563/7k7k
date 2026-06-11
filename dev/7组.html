@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>游戏回廊 | 经典七合一 · 七彩流光</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: radial-gradient(circle at 10% 20%, #11212e, #0a1620);
+            font-family: 'Segoe UI', 'Poppins', 'Inter', system-ui, -apple-system, 'Noto Sans TC', monospace;
+            padding: 2rem 1.5rem;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='1' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .game-hub {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero {
+            margin-bottom: 2.5rem;
+            backdrop-filter: blur(4px);
+        }
+
+        .hero-top {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .hero-title-wrapper {
+            justify-self: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            font-weight: 800;
+            letter-spacing: 2px;
+        }
+
+        .hero-title-wrapper h1 {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-size: 2.8rem;
+            margin: 0;
+            font-weight: 800;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .hero-emoji {
+            font-size: 2.8rem;
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));
+            background: none;
+            color: #FFE6B0;
+            display: inline-block;
+        }
+
+        .hero-title {
+            background: linear-gradient(135deg, 
+                #FF3B3B, #FF7F00, #FFD700, 
+                #00CC00, #0099FF, #4B0082, #9B30FF);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.2);
+            animation: shimmer 3s infinite linear;
+            background-size: 200% auto;
+            font-size: 2.8rem;
+            font-weight: 800;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        .search-wrapper {
+            justify-self: end;
+            display: flex;
+            align-items: center;
+            background: rgba(18, 28, 35, 0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 60px;
+            padding: 0.3rem 0.3rem 0.3rem 1.2rem;
+            border: 1px solid rgba(255, 215, 150, 0.4);
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .search-wrapper:focus-within {
+            border-color: #ffb347;
+            box-shadow: 0 0 0 2px rgba(255, 180, 70, 0.3);
+            background: rgba(25, 38, 48, 0.85);
+        }
+
+        #gameSearchInput {
+            background: transparent;
+            border: none;
+            padding: 0.6rem 0;
+            font-size: 0.95rem;
+            color: #f5efdf;
+            font-family: inherit;
+            width: 190px;
+            outline: none;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+        #gameSearchInput::placeholder {
+            color: #bfcfd9;
+            font-weight: 400;
+            font-size: 0.85rem;
+        }
+
+        .search-clear {
+            background: rgba(255, 200, 120, 0.2);
+            border: none;
+            color: #ffdd99;
+            font-size: 1.25rem;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+            margin-left: 4px;
+            font-weight: bold;
+        }
+        .search-clear:hover {
+            background: rgba(255, 160, 60, 0.6);
+            color: white;
+            transform: scale(1.02);
+        }
+
+        .hero-left-placeholder {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .sub {
+            color: #CFDEC8;
+            font-size: 1rem;
+            background: rgba(10, 20, 28, 0.55);
+            backdrop-filter: blur(12px);
+            display: inline-block;
+            padding: 0.5rem 1.8rem;
+            border-radius: 80px;
+            margin-top: 0.4rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            border: 0.5px solid rgba(255,215,150,0.3);
+            text-align: center;
+            width: auto;
+        }
+
+        .sub-wrapper {
+            text-align: center;
+            width: 100%;
+        }
+
+        .search-stats {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #ffdfb3;
+            margin-top: 0.8rem;
+            min-height: 28px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            background: rgba(0,0,0,0.2);
+            display: inline-block;
+            width: auto;
+            padding: 0.2rem 1rem;
+            border-radius: 40px;
+            backdrop-filter: blur(2px);
+        }
+        .stats-wrapper {
+            text-align: center;
+            margin-top: 0.5rem;
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+            gap: 2rem;
+            margin: 2.5rem 0 2rem;
+            transition: all 0.2s;
+        }
+
+        .game-card {
+            background: rgba(28, 38, 48, 0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 48px;
+            overflow: hidden;
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,240,0.08);
+            transition: all 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            cursor: pointer;
+            border: 1px solid rgba(255, 200, 120, 0.25);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .game-card:hover {
+            transform: translateY(-10px);
+            background: rgba(38, 52, 68, 0.8);
+            border-color: rgba(255, 190, 80, 0.6);
+            box-shadow: 0 30px 45px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .game-card.match-highlight {
+            border-color: #ffc164;
+            box-shadow: 0 0 0 2px rgba(255, 193, 100, 0.3), 0 20px 35px -12px rgba(0,0,0,0.4);
+        }
+
+        .card-img {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            background: linear-gradient(135deg, #1a2a33, #0f1a20);
+            position: relative;
+            overflow: hidden;
+            border-bottom: 2px solid rgba(255, 180, 60, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(145deg, #2a3a44, #1a2a33);
+            font-family: 'Segoe UI', 'Poppins', system-ui, monospace;
+            text-align: center;
+            z-index: 2;
+        }
+        .preview-emoji {
+            font-size: 5.5rem;
+            line-height: 1.2;
+            margin-bottom: 0.5rem;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }
+        .preview-text {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FFF2CC, #FFE0A3);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow: none;
+            font-weight: 800;
+        }
+        .card-img .game-img {
+            display: none;
+        }
+
+        .card-content {
+            padding: 1.4rem 1.4rem 1.6rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .game-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 0.6rem;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+        }
+
+        .game-emoji {
+            background: rgba(255, 200, 110, 0.2);
+            padding: 0 12px;
+            border-radius: 50px;
+            font-size: 1.45rem;
+            backdrop-filter: blur(2px);
+            transition: all 0.2s;
+        }
+
+        .game-name-text {
+            font-size: 1.75rem;
+            font-weight: 800;
+            background: linear-gradient(115deg, 
+                #FF4D4D, #FFA500, #FFFF00, 
+                #00CC66, #3399FF, #9933FF, #FF66CC);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            background-size: 180% auto;
+            animation: rainbowMove 2s ease infinite alternate;
+        }
+        
+        @keyframes rainbowMove {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+
+        .game-desc {
+            color: #C8D9E6;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            margin: 8px 0 14px 0;
+            font-weight: 450;
+            opacity: 0.9;
+        }
+
+        .fun-emoji {
+            display: flex;
+            gap: 10px;
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 6px 14px;
+            border-radius: 60px;
+            width: fit-content;
+            backdrop-filter: blur(4px);
+        }
+
+        .play-btn {
+            background: linear-gradient(105deg, #FFB347, #FF8C2E);
+            border: none;
+            color: #231f1a;
+            font-weight: 800;
+            padding: 12px 0;
+            border-radius: 60px;
+            font-size: 1rem;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.2s;
+            cursor: pointer;
+            margin-top: 10px;
+            box-shadow: 0 5px 0 #a35117;
+            transform: translateY(-2px);
+            letter-spacing: 1px;
+        }
+
+        .game-card:active .play-btn {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #a35117;
+        }
+
+        .play-btn:hover {
+            background: linear-gradient(105deg, #FFC164, #FFA042);
+            box-shadow: 0 5px 0 #b55d1f;
+        }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 3rem;
+            color: #8FBCBB;
+            font-size: 0.8rem;
+            border-top: 1px dashed rgba(200, 180, 120, 0.3);
+            padding-top: 1.8rem;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            background: transparent;
+            font-weight: 450;
+        }
+
+        .no-result-tip {
+            text-align: center;
+            padding: 3rem 1rem;
+            background: rgba(0,0,0,0.4);
+            border-radius: 48px;
+            backdrop-filter: blur(8px);
+            margin: 1rem 0;
+            color: #ffdaaa;
+            font-size: 1.2rem;
+            font-weight: 500;
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 700px) {
+            body { padding: 1.2rem; }
+            .hero-top {
+                grid-template-columns: 1fr;
+                gap: 0.8rem;
+                justify-items: center;
+            }
+            .hero-title-wrapper {
+                justify-self: center;
+                order: 1;
+            }
+            .search-wrapper {
+                justify-self: center;
+                order: 2;
+                width: 90%;
+                max-width: 320px;
+            }
+            .hero-left-placeholder {
+                display: none;
+            }
+            .hero-title-wrapper h1 {
+                font-size: 2rem;
+            }
+            .hero-emoji {
+                font-size: 2rem;
+            }
+            .hero-title {
+                font-size: 2rem;
+            }
+            .game-name-text {
+                font-size: 1.45rem;
+            }
+            .game-grid {
+                gap: 1.3rem;
+            }
+            .card-content {
+                padding: 1rem;
+            }
+            .sub {
+                font-size: 0.9rem;
+                padding: 0.4rem 1.2rem;
+            }
+            .preview-emoji {
+                font-size: 3.5rem;
+            }
+            .preview-text {
+                font-size: 1.3rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .game-emoji { font-size: 1.1rem; padding: 0 8px; }
+            .play-btn { font-size: 0.9rem; }
+            .hero-title-wrapper h1 {
+                gap: 6px;
+            }
+            .preview-emoji {
+                font-size: 2.8rem;
+            }
+            .preview-text {
+                font-size: 1.1rem;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f1a1f;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #f0b27a;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="game-hub">
+    <div class="hero">
+        <div class="hero-top">
+            <div class="hero-left-placeholder"></div>
+            <div class="hero-title-wrapper">
+                <h1>
+                    <span class="hero-emoji">🎮</span>
+                    <span class="hero-title">经典游戏回廊</span>
+                    <span class="hero-emoji">🕹️</span>
+                </h1>
+            </div>
+            <div class="search-wrapper">
+                <input type="text" id="gameSearchInput" placeholder="🔍 搜游戏名称 / 描述..." autocomplete="off">
+                <button class="search-clear" id="searchClearBtn" aria-label="清空搜索">✖</button>
+            </div>
+        </div>
+        <div class="sub-wrapper">
+            <div class="sub">✨ 指尖时光 · 妙趣横生 ✨</div>
+        </div>
+        <div class="stats-wrapper">
+            <div class="search-stats" id="searchStats"></div>
+        </div>
+    </div>
+
+    <div class="game-grid" id="gameGrid">
+        <!-- 1. 推箱子 -->
+        <div class="game-card" data-game-url="推箱子.html">
+            <div class="card-img">
+                <div class="preview-content">
+                    <div class="preview-emoji">📦</div>
+                    <div class="preview-text">推箱子</div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="game-title">
+                    <span class="game-emoji">🧩</span>
+                    <span class="game-name-text">推箱子 · 仓库番</span>
+                </div>
+                <div class="game-desc">策略搬运，将木箱推到金色目标点！巧妙规划路线，挑战脑力极限。</div>
+                <div class="fun-emoji">📦 ➡️ ⭐ 🤔 🧠</div>
+                <div class="play-btn">▶ 开始挑战 🎯</div>
+            </div>
+        </div>
+
+        <!-- 2. 贪吃蛇 -->
+        <div class="game-card" data-game-url="贪吃蛇.html">
+            <div class="card-img">
+                <div class="preview-content">
+                    <div class="preview-emoji">🐍</div>
+                    <div class="preview-text">贪吃蛇</div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="game-title">
+                    <span class="game-emoji">🐍</span>
+                    <span class="game-name-text">贪吃蛇 · 经典永存</span>
+                </div>
+                <div class="game-desc">控制小蛇吃掉红色果实，不断变长，注意别撞墙或自己的身体！</div>
+                <div class="fun-emoji">🍎 🐍 💥 🏆</div>
+                <div class="play-btn">▶ 开始贪吃 🍏</div>
+            </div>
+        </div>
+
+        <!-- 3. 星际战机 -->
+        <div class="game-card" data-game-url="飞机打怪兽.html">
+            <div class="card-img">
+                <div class="preview-content">
+                    <div class="preview-emoji">🚀</div>
+                    <div class="preview-text">星际战机</div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="game-title">
+                    <span class="game-emoji">🛸</span>
+                    <span class="game-name-text">星际战机 · 打怪兽</span>
+                </div>
+                <div class="game-desc">操控未来战机，自动发射子弹！击落外星怪物，躲避碰撞，解锁更高分数。</div>
+                <div class="fun-emoji">💥 🔫 👾 ✨</div>
+                <div class="play-btn">▶ 紧急起飞 ⚡</div>
+            </div>
+        </div>
+
+        <!-- 4. 打地鼠 -->
+        <div class="game-card" data-game-url="打地鼠.html">
+            <div class="card-img">
+                <div class="preview-content">
+                    <div class="preview-emoji">🔨</div>
+                    <div class="preview-text">打地鼠</div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="game-title">
+                    <span class="game-emoji">🐭</span>
+                    <span class="game-name-text">打地鼠 · 敏捷考验</span>
+                </div>
+                <div class="game-desc">限定时间内挥动木槌，击中地鼠得分，小心炸弹！挑战手速极限。</div>
+                <div class="fun-emoji">⏰ 🔨 💣 ⚡ 🤯</div>
+                <div class="play-btn">▶ 拿起锤子 🧨</div>
+            </div>
+        </div>
+
+        <!-- 5. 小恐龙跑酷 -->
+        <div class="game-card" data-game-url="小恐龙跑酷.html">
+            <div class="card-img">
+                <div class="preview-content">
+                    <div class="preview-emoji">🦖</div>
+                    <div class="preview-text">小恐龙</div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="game-title">
+                    <span class="game-emoji">🦖</span>
+                    <span class="game-name-text">小恐龙跑酷 · 障碍狂奔</span>
+                </div>
+                <div class="game-desc">控制小恐龙跳跃或下蹲，躲避仙人掌和飞虫，奔跑越远得分越高！</div>
+                <div class="fun-emoji">🌵 🦗 🏃‍♂️ 💨</div>
+                <div class="play-btn">▶ 开始奔跑 🌵</div>
+            </div>
+        </div>
+
+        <!-- 6. 五子棋 -->
+        <div class="game-card" data-game-url="五子棋.html">
+            <div class="card-img">
+                <div class="preview-content">
+                    <div class="preview-emoji">⚫⚪</div>
+                    <div class="preview-text">五子棋</div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="game-title">
+                    <span class="game-emoji">🏮</span>
+                    <span class="game-name-text">五子棋 · 双人对弈</span>
+                </div>
+                <div class="game-desc">经典黑白博弈，五子连线即可获胜。双方轮流落子，享受静谧棋艺时光。</div>
+                <div class="fun-emoji">⚫️ ⚪️ ♟️ 🧘‍♂️ 🤝</div>
+                <div class="play-btn">▶ 对弈一局 🎋</div>
+            </div>
+        </div>
+
+        <!-- 7. 俄罗斯方块 -->
+        <div class="game-card" data-game-url="俄罗斯方块.html">
+            <div class="card-img">
+                <div class="preview-content">
+                    <div class="preview-emoji">🧩</div>
+                    <div class="preview-text">俄罗斯方块</div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="game-title">
+                    <span class="game-emoji">🧩</span>
+                    <span class="game-name-text">俄罗斯方块 · 经典下落</span>
+                </div>
+                <div class="game-desc">经典下落消除，七种方块变换无尽挑战！旋转、堆叠，挑战最高分数。</div>
+                <div class="fun-emoji">🔄 ⬇️ 🧩 🏆</div>
+                <div class="play-btn">▶ 开始消除 ⏬</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-note">
+        <span>🎲 点击卡片即刻游玩</span>
+        <span>✨ 七款经典 · 重温纯粹快乐</span>
+        <span>🔍 右上角搜索，快速定位心仪游戏</span>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ========== 搜索筛选功能 ==========
+        const searchInput = document.getElementById('gameSearchInput');
+        const clearBtn = document.getElementById('searchClearBtn');
+        const searchStats = document.getElementById('searchStats');
+        const gameGrid = document.getElementById('gameGrid');
+        const gameCards = Array.from(document.querySelectorAll('.game-card'));
+        
+        // 为每个卡片附加搜索数据
+        gameCards.forEach(card => {
+            const nameElem = card.querySelector('.game-name-text');
+            const descElem = card.querySelector('.game-desc');
+            let gameNameRaw = nameElem ? nameElem.innerText.trim() : '';
+            let gameDescRaw = descElem ? descElem.innerText.trim() : '';
+            card.setAttribute('data-search-name', gameNameRaw.toLowerCase());
+            card.setAttribute('data-search-desc', gameDescRaw.toLowerCase());
+        });
+        
+        function filterGamesByKeyword(keyword) {
+            const lowerKeyword = keyword.trim().toLowerCase();
+            let matchCount = 0;
+            
+            if (lowerKeyword === '') {
+                gameCards.forEach(card => {
+                    card.style.display = '';
+                    card.classList.remove('match-highlight');
+                });
+                searchStats.innerHTML = '';
+                removeNoResultMessage();
+                return;
+            }
+            
+            gameCards.forEach(card => {
+                const nameMatch = card.getAttribute('data-search-name')?.includes(lowerKeyword) || false;
+                const descMatch = card.getAttribute('data-search-desc')?.includes(lowerKeyword) || false;
+                const isMatch = nameMatch || descMatch;
+                
+                if (isMatch) {
+                    card.style.display = '';
+                    card.classList.add('match-highlight');
+                    matchCount++;
+                } else {
+                    card.style.display = 'none';
+                    card.classList.remove('match-highlight');
+                }
+            });
+            
+            if (matchCount === 0) {
+                searchStats.innerHTML = '🔍 没有找到相关游戏，试试「贪吃」「五子棋」「俄罗斯」等关键词';
+                showNoResultMessage();
+            } else {
+                searchStats.innerHTML = `✨ 找到 ${matchCount} 款与「${escapeHtml(lowerKeyword)}」相关的游戏 ✨`;
+                removeNoResultMessage();
+            }
+        }
+        
+        function showNoResultMessage() {
+            removeNoResultMessage();
+            const noResultDiv = document.createElement('div');
+            noResultDiv.className = 'no-result-tip';
+            noResultDiv.id = 'noResultPlaceholder';
+            noResultDiv.innerHTML = '🕹️ 没有匹配的游戏 🎮<br><span style="font-size: 0.85rem;">试试搜 "贪吃蛇" "五子棋" "俄罗斯方块" 等关键词</span>';
+            gameGrid.appendChild(noResultDiv);
+        }
+        
+        function removeNoResultMessage() {
+            const existing = document.getElementById('noResultPlaceholder');
+            if (existing) existing.remove();
+        }
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+        
+        function resetSearch() {
+            if (searchInput) searchInput.value = '';
+            filterGamesByKeyword('');
+        }
+        
+        // 搜索事件绑定
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                filterGamesByKeyword(e.target.value);
+            });
+        }
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                resetSearch();
+            });
+        }
+        
+        // ========== 核心修复：游戏跳转功能 ==========
+        // 统一跳转函数
+        function navigateToGame(gameUrl) {
+            if (!gameUrl) {
+                console.warn('未找到游戏链接');
+                return;
+            }
+            // 直接跳转到同目录下的游戏HTML文件
+            window.location.href = gameUrl;
+        }
+        
+        // 为所有游戏卡片绑定点击事件
+        function bindGameCardEvents() {
+            gameCards.forEach(card => {
+                const targetUrl = card.getAttribute('data-game-url');
+                if (!targetUrl) return;
+                
+                // 获取卡片内的按钮
+                const playBtn = card.querySelector('.play-btn');
+                
+                // 移除已有的监听器，避免重复绑定
+                if (card._clickHandler) {
+                    card.removeEventListener('click', card._clickHandler);
+                }
+                if (playBtn && playBtn._clickHandler) {
+                    playBtn.removeEventListener('click', playBtn._clickHandler);
+                }
+                
+                // 定义跳转处理函数
+                const clickHandler = (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    navigateToGame(targetUrl);
+                };
+                
+                // 绑定卡片点击（点击卡片任何区域都跳转）
+                card.addEventListener('click', clickHandler);
+                card._clickHandler = clickHandler;
+                
+                // 绑定按钮点击（防止事件冒泡导致重复，但也执行跳转）
+                if (playBtn) {
+                    const btnHandler = (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        navigateToGame(targetUrl);
+                    };
+                    playBtn.addEventListener('click', btnHandler);
+                    playBtn._clickHandler = btnHandler;
+                }
+            });
+        }
+        
+        // 初始化所有功能
+        function init() {
+            bindGameCardEvents();
+            // 确保搜索不影响跳转（搜索只是隐藏显示，不影响绑定）
+            console.log('游戏回廊已启动，共 ' + gameCards.length + ' 款游戏，点击任意卡片即可开始游玩！');
+        }
+        
+        init();
+    })();
+</script>
+</body>
+</html>

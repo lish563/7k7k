@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>打地鼠 · 经典街机</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(145deg, #2a6b3c 0%, #1d4d2a 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Poppins', 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: #6b4c3b;
+            border-radius: 64px;
+            padding: 24px 28px 28px 28px;
+            box-shadow: 0 25px 40px rgba(0, 0, 0, 0.6), inset 0 1px 3px rgba(255, 255, 255, 0.2);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 32px;
+            box-shadow: 0 0 0 8px #8b6946, 0 12px 28px black;
+            background-color: #5c3e2b;
+            cursor: pointer;
+        }
+
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            margin-bottom: 12px;
+            background: #2e241f;
+            padding: 10px 22px;
+            border-radius: 60px;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .score-box {
+            background: #1f1912;
+            padding: 6px 20px;
+            border-radius: 40px;
+            color: #f7d44a;
+            font-weight: bold;
+            font-size: 26px;
+            font-family: monospace;
+            box-shadow: inset 0 0 6px #5f4c2e, 0 3px 6px rgba(0,0,0,0.3);
+        }
+
+        .time-box {
+            background: #1f1912;
+            padding: 6px 20px;
+            border-radius: 40px;
+            color: #6bc9ff;
+            font-weight: bold;
+            font-size: 24px;
+            font-family: monospace;
+        }
+
+        button {
+            background: #e0a82b;
+            border: none;
+            font-size: 18px;
+            font-weight: bold;
+            font-family: inherit;
+            padding: 8px 24px;
+            border-radius: 40px;
+            color: #2b2b1a;
+            cursor: pointer;
+            transition: all 0.12s linear;
+            box-shadow: 0 5px 0 #7a4c1a;
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #7a4c1a;
+        }
+
+        .status {
+            background: #000000aa;
+            padding: 6px 20px;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #f7ecc7;
+            backdrop-filter: blur(4px);
+        }
+
+        .tips {
+            text-align: center;
+            margin-top: 18px;
+            color: #f9e0a0;
+            font-size: 13px;
+            background: #1e2a1a80;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 6px 22px;
+            border-radius: 40px;
+            font-weight: 500;
+        }
+
+        @media (max-width: 560px) {
+            .game-container { padding: 16px; }
+            .score-box { font-size: 20px; padding: 4px 16px; }
+            .time-box { font-size: 18px; }
+            button { font-size: 14px; padding: 6px 18px; }
+        }
+    </style>
+</head>
+<body>
+<div>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="550" height="550"></canvas>
+
+        <div class="info-panel">
+            <div class="score-box">
+                🔨 得分 <span id="scoreValue">0</span>
+            </div>
+            <div class="time-box">
+                ⏱️ 剩余 <span id="timeValue">60</span> 秒
+            </div>
+            <button id="restartBtn">🔄 重新开局</button>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+            <div class="status" id="gameStatusMsg">🐭 快打地鼠！点击冒头的家伙 🐭</div>
+            <div class="tips">💥 普通地鼠+10分 | 🎩 黄金地鼠+30分 | 💣 炸弹-10分</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ---------- 打地鼠 · 核心模块 ----------
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 游戏设置
+        let gameActive = true;
+        let score = 0;
+        let timeLeft = 60;          // 60秒倒计时
+        let timerInterval = null;
+        
+        // 地鼠洞参数: 3x3 网格 (九宫格)
+        const ROWS = 3;
+        const COLS = 3;
+        let holes = [];              // 存储每个洞的状态 { x, y, width, height, active, type, animationFrame }
+        let activeMole = null;      // 当前活跃的地鼠信息 { row, col, type, endTime }
+        
+        let moleSpawnInterval = null;   // 生成地鼠定时器
+        let gameLoopId = null;           // 动画帧
+        
+        // 地鼠类型
+        const MOLE_NORMAL = 'normal';    // 普通地鼠 +10
+        const MOLE_GOLDEN = 'golden';    // 黄金地鼠 +30
+        const MOLE_BOMB = 'bomb';        // 炸弹 -10
+        
+        // UI 元素
+        const scoreSpan = document.getElementById('scoreValue');
+        const timeSpan = document.getElementById('timeValue');
+        const statusMsgSpan = document.getElementById('gameStatusMsg');
+        const restartBtn = document.getElementById('restartBtn');
+        
+        // 动画效果相关
+        let particleEffects = [];   // 打击特效 { x, y, frames, type }
+        
+        // ---------- 初始化洞的位置 (基于canvas 550x550) ----------
+        function initHoles() {
+            const marginX = 40;
+            const marginY = 70;
+            const holeWidth = (canvas.width - marginX * 2) / COLS;
+            const holeHeight = (canvas.height - marginY * 2) / ROWS;
+            holes = [];
+            for(let row = 0; row < ROWS; row++) {
+                for(let col = 0; col < COLS; col++) {
+                    holes.push({
+                        row: row,
+                        col: col,
+                        x: marginX + col * holeWidth,
+                        y: marginY + row * holeHeight,
+                        width: holeWidth,
+                        height: holeHeight,
+                        active: false,
+                        type: null
+                    });
+                }
+            }
+        }
+        
+        // 更新UI分数/时间
+        function updateUI() {
+            scoreSpan.innerText = score;
+            timeSpan.innerText = Math.floor(timeLeft);
+        }
+        
+        // 游戏结束逻辑
+        function gameOver() {
+            if(!gameActive) return;
+            gameActive = false;
+            if(timerInterval) clearInterval(timerInterval);
+            if(moleSpawnInterval) clearInterval(moleSpawnInterval);
+            timerInterval = null;
+            moleSpawnInterval = null;
+            // 清除任何活跃地鼠
+            if(activeMole) {
+                let idx = activeMole.row * COLS + activeMole.col;
+                if(holes[idx]) holes[idx].active = false;
+                activeMole = null;
+            }
+            statusMsgSpan.innerText = '💀 游戏结束！点击「重新开局」继续挑战 💀';
+            statusMsgSpan.style.color = '#ffae70';
+            draw(); // 立即重绘结束画面
+        }
+        
+        // 倒计时启动
+        function startTimer() {
+            if(timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if(!gameActive) return;
+                if(timeLeft <= 1) {
+                    timeLeft = 0;
+                    updateUI();
+                    gameOver();
+                } else {
+                    timeLeft--;
+                    updateUI();
+                }
+            }, 1000);
+        }
+        
+        // 生成随机地鼠 (自动出现)
+        function spawnRandomMole() {
+            if(!gameActive) return;
+            // 如果已经有地鼠在外面，不再生成新的（保证同时只有一个地鼠，经典模式）
+            if(activeMole !== null) return;
+            
+            // 随机选择一个洞 (0-8)
+            const totalHoles = holes.length;
+            let randomIndex = Math.floor(Math.random() * totalHoles);
+            let selectedHole = holes[randomIndex];
+            
+            // 决定地鼠类型 (概率: 普通70% 黄金20% 炸弹10%)
+            let randType = Math.random();
+            let moleType = MOLE_NORMAL;
+            if(randType < 0.2) {
+                moleType = MOLE_GOLDEN;
+            } else if(randType < 0.3) {
+                moleType = MOLE_BOMB;
+            } else {
+                moleType = MOLE_NORMAL;
+            }
+            
+            // 激活地鼠
+            selectedHole.active = true;
+            selectedHole.type = moleType;
+            activeMole = {
+                row: selectedHole.row,
+                col: selectedHole.col,
+                type: moleType,
+                endTime: Date.now() + 1200   // 持续1.2秒自动消失
+            };
+            
+            // 设置自动消失定时器 (如果未被打中)
+            let disappearTimeout = setTimeout(() => {
+                if(gameActive && activeMole && activeMole.row === selectedHole.row && activeMole.col === selectedHole.col) {
+                    // 地鼠消失，不减分，只是躲回去
+                    selectedHole.active = false;
+                    activeMole = null;
+                    draw();
+                }
+            }, 1250);
+            // 存储timeout便于清理？不用太复杂，消失后activeMole置空即可
+            selectedHole.disappearTimer = disappearTimeout;
+        }
+        
+        // 打击地鼠 (由canvas点击调用)
+        function hitMole(row, col) {
+            if(!gameActive) return false;
+            // 检查这个洞是否有活跃地鼠且匹配当前activeMole
+            if(activeMole && activeMole.row === row && activeMole.col === col) {
+                const holeIndex = row * COLS + col;
+                const hole = holes[holeIndex];
+                if(hole && hole.active) {
+                    const moleType = activeMole.type;
+                    let deltaScore = 0;
+                    let effectColor = '';
+                    // 根据类型加减分
+                    if(moleType === MOLE_NORMAL) {
+                        deltaScore = 10;
+                        effectColor = '#ffaa44';
+                        statusMsgSpan.innerText = '✔️ 打中普通地鼠 +10';
+                    } else if(moleType === MOLE_GOLDEN) {
+                        deltaScore = 30;
+                        effectColor = '#ffdd77';
+                        statusMsgSpan.innerText = '🌟 黄金地鼠！+30 🌟';
+                    } else if(moleType === MOLE_BOMB) {
+                        deltaScore = -10;
+                        effectColor = '#ff5555';
+                        statusMsgSpan.innerText = '💣 炸弹！扣10分 💣';
+                    }
+                    score += deltaScore;
+                    if(score < 0) score = 0;
+                    updateUI();
+                    
+                    // 添加打击特效
+                    const centerX = hole.x + hole.width/2;
+                    const centerY = hole.y + hole.height/2;
+                    particleEffects.push({ x: centerX, y: centerY, frames: 12, color: effectColor, size: 18 });
+                    
+                    // 清除地鼠
+                    if(hole.disappearTimer) clearTimeout(hole.disappearTimer);
+                    hole.active = false;
+                    activeMole = null;
+                    draw(); // 立即刷新
+                    
+                    // 短暂显示状态后恢复
+                    setTimeout(() => {
+                        if(gameActive && statusMsgSpan.innerText.includes('地鼠')) {
+                            statusMsgSpan.innerText = '🐭 快打地鼠！点击冒头的家伙 🐭';
+                            statusMsgSpan.style.color = '#f7ecc7';
+                        }
+                    }, 600);
+                    return true;
+                }
+            }
+            // 打空: 敲击无效但有音效感提示
+            if(gameActive) {
+                statusMsgSpan.innerText = '😵 打空了！等它冒头再敲~';
+                setTimeout(() => {
+                    if(gameActive && statusMsgSpan.innerText.includes('打空')) {
+                        statusMsgSpan.innerText = '🐭 快打地鼠！点击冒头的家伙 🐭';
+                    }
+                }, 500);
+            }
+            return false;
+        }
+        
+        // ---------- 绘图模块 (手绘风洞穴 + 可爱地鼠) ----------
+        function draw() {
+            if(!ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 1. 草地背景 + 田园质感
+            const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            grad.addColorStop(0, '#6f8c4d');
+            grad.addColorStop(1, '#4c6a2f');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // 阴影纹理
+            ctx.fillStyle = '#3a5723';
+            for(let i=0;i<120;i++) {
+                ctx.fillRect((i*37)%canvas.width, (i*23)%canvas.height, 2, 2);
+            }
+            
+            // 2. 绘制每个洞穴
+            for(let h of holes) {
+                // 洞坑
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#3e2a1f';
+                ctx.beginPath();
+                ctx.ellipse(h.x + h.width/2, h.y + h.height/2 - 5, h.width*0.38, h.height*0.32, 0, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#2c1d12';
+                ctx.beginPath();
+                ctx.ellipse(h.x + h.width/2, h.y + h.height/2 - 3, h.width*0.34, h.height*0.28, 0, 0, Math.PI*2);
+                ctx.fill();
+                
+                // 洞穴边缘草叶
+                ctx.fillStyle = '#7aa55a';
+                for(let i=0;i<6;i++) {
+                    ctx.fillRect(h.x + 5 + i*7, h.y + h.height*0.7, 2, 12);
+                }
+                
+                // 如果地鼠激活
+                if(h.active && activeMole && activeMole.row === h.row && activeMole.col === h.col) {
+                    const moleType = activeMole.type;
+                    const cx = h.x + h.width/2;
+                    const cy = h.y + h.height/2 - 12;
+                    // 根据不同地鼠类型绘制
+                    if(moleType === MOLE_NORMAL) {
+                        // 普通棕色地鼠
+                        ctx.fillStyle = '#ad7a4b';
+                        ctx.beginPath();
+                        ctx.ellipse(cx, cy, h.width*0.28, h.height*0.28, 0, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.fillStyle = '#885e38';
+                        ctx.beginPath();
+                        ctx.ellipse(cx-3, cy-4, 5, 6, 0, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath();
+                        ctx.arc(cx-6, cy-7, 3, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.fillStyle = '#000000';
+                        ctx.beginPath();
+                        ctx.arc(cx-7, cy-8, 1.5, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.fillStyle = '#f5b642';
+                        ctx.beginPath();
+                        ctx.ellipse(cx+3, cy-5, 3, 2, 0, 0, Math.PI*2);
+                        ctx.fill();
+                        // 胡须
+                        ctx.beginPath();
+                        ctx.moveTo(cx-12, cy-6);
+                        ctx.lineTo(cx-5, cy-4);
+                        ctx.lineTo(cx-12, cy-2);
+                        ctx.strokeStyle = '#74532a';
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+                    } 
+                    else if(moleType === MOLE_GOLDEN) {
+                        // 黄金地鼠 + 皇冠
+                        ctx.fillStyle = '#f7c56e';
+                        ctx.beginPath();
+                        ctx.ellipse(cx, cy, h.width*0.3, h.height*0.3, 0, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.fillStyle = '#ffd966';
+                        ctx.beginPath();
+                        ctx.ellipse(cx-3, cy-5, 5, 6, 0, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath();
+                        ctx.arc(cx-7, cy-8, 3, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.fillStyle = '#452b1a';
+                        ctx.beginPath();
+                        ctx.arc(cx-8, cy-9, 1.8, 0, Math.PI*2);
+                        ctx.fill();
+                        // 皇冠
+                        ctx.fillStyle = '#ffbb33';
+                        ctx.beginPath();
+                        ctx.moveTo(cx-12, cy-16);
+                        ctx.lineTo(cx-5, cy-22);
+                        ctx.lineTo(cx, cy-16);
+                        ctx.lineTo(cx+6, cy-22);
+                        ctx.lineTo(cx+12, cy-16);
+                        ctx.fill();
+                        ctx.fillStyle = '#ff4d4d';
+                        ctx.beginPath();
+                        ctx.arc(cx-5, cy-20, 2, 0, Math.PI*2);
+                        ctx.fill();
+                    } 
+                    else if(moleType === MOLE_BOMB) {
+                        // 炸弹鼠 (黑色炸弹)
+                        ctx.fillStyle = '#3a3a4a';
+                        ctx.beginPath();
+                        ctx.ellipse(cx, cy, h.width*0.28, h.height*0.28, 0, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.fillStyle = '#1e1e2a';
+                        ctx.beginPath();
+                        ctx.ellipse(cx-3, cy-4, 5, 6, 0, 0, Math.PI*2);
+                        ctx.fill();
+                        // 引线
+                        ctx.beginPath();
+                        ctx.moveTo(cx+6, cy-12);
+                        ctx.lineTo(cx+12, cy-20);
+                        ctx.lineWidth = 3;
+                        ctx.strokeStyle = '#aa5a2a';
+                        ctx.stroke();
+                        ctx.fillStyle = '#ff3333';
+                        ctx.beginPath();
+                        ctx.arc(cx+12, cy-22, 4, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.fillStyle = '#ffffaa';
+                        ctx.beginPath();
+                        ctx.arc(cx-7, cy-8, 2, 0, Math.PI*2);
+                        ctx.fill();
+                        // 骷髅标志
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(cx-4, cy-3, 8, 3);
+                    }
+                }
+            }
+            
+            // 绘制打击粒子特效
+            for(let i=0; i<particleEffects.length; i++) {
+                let p = particleEffects[i];
+                let alpha = p.frames / 12;
+                ctx.fillStyle = p.color + Math.floor(alpha*255).toString(16).padStart(2,'0');
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * (1 - p.frames/12), 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#fff8aa';
+                ctx.beginPath();
+                ctx.arc(p.x-2, p.y-2, p.size*0.4, 0, Math.PI*2);
+                ctx.fill();
+                p.frames--;
+                if(p.frames <= 0) {
+                    particleEffects.splice(i,1);
+                    i--;
+                }
+            }
+            
+            // 游戏结束时覆盖半透明及文字
+            if(!gameActive) {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.font = 'bold 38px "Segoe UI", system-ui';
+                ctx.fillStyle = '#ffc285';
+                ctx.shadowBlur = 0;
+                ctx.fillText('GAME OVER', canvas.width/2-125, canvas.height/2-30);
+                ctx.font = '18px monospace';
+                ctx.fillStyle = '#ffeeaa';
+                ctx.fillText('点击「重新开局」继续挑战', canvas.width/2-130, canvas.height/2+35);
+            }
+            
+            // 绘制计时器纹理和装饰
+            ctx.font = 'bold 22px monospace';
+            ctx.fillStyle = '#fffaec';
+            ctx.shadowBlur = 0;
+        }
+        
+        // 点击canvas检测命中哪个洞
+        function handleCanvasClick(e) {
+            if(!gameActive) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let clientX, clientY;
+            if(e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+                e.preventDefault();
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            let canvasX = (clientX - rect.left) * scaleX;
+            let canvasY = (clientY - rect.top) * scaleY;
+            
+            // 遍历洞检测是否点击在洞范围内
+            for(let h of holes) {
+                if(canvasX >= h.x && canvasX <= h.x + h.width && canvasY >= h.y && canvasY <= h.y + h.height) {
+                    hitMole(h.row, h.col);
+                    draw();
+                    break;
+                }
+            }
+        }
+        
+        // 重置游戏完整状态
+        function resetAndStart() {
+            // 停止所有定时器
+            if(timerInterval) clearInterval(timerInterval);
+            if(moleSpawnInterval) clearInterval(moleSpawnInterval);
+            if(activeMole && activeMole.disappearTimer) clearTimeout(activeMole.disappearTimer);
+            // 重置变量
+            gameActive = true;
+            score = 0;
+            timeLeft = 60;
+            activeMole = null;
+            particleEffects = [];
+            // 重置所有洞穴状态
+            for(let h of holes) {
+                h.active = false;
+                if(h.disappearTimer) clearTimeout(h.disappearTimer);
+                h.type = null;
+            }
+            updateUI();
+            statusMsgSpan.innerText = '🐭 快打地鼠！点击冒头的家伙 🐭';
+            statusMsgSpan.style.color = '#f7ecc7';
+            // 重新启动倒计时与生成器
+            startTimer();
+            // 生成地鼠间隔 1.3 ~ 1.6 秒随机
+            moleSpawnInterval = setInterval(() => {
+                if(gameActive) {
+                    spawnRandomMole();
+                    draw();
+                }
+            }, 1350);
+            draw();
+        }
+        
+        // 初始化整个游戏
+        function init() {
+            initHoles();
+            resetAndStart();   // 开始游戏
+            
+            // 绑定画布点击 (鼠标 + 触摸)
+            canvas.addEventListener('click', handleCanvasClick);
+            canvas.addEventListener('touchstart', handleCanvasClick, { passive: false });
+            restartBtn.addEventListener('click', () => {
+                resetAndStart();
+            });
+            // 启动动画帧持续绘制
+            function animate() {
+                draw();
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+        
+        // 启动
+        init();
+    })();
+</script>
+</body>
+</html>
