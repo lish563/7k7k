@@ -1,3 +1,14 @@
+<!--
+  ============================================================
+  经典贪吃蛇游戏 (Snake Game)
+  ============================================================
+  - 游戏区域：20×20 的网格，画布大小 400×400 像素
+  - 操作方式：键盘方向键（上/下/左/右）控制蛇的移动方向
+  - 胜利条件：蛇填满整个棋盘（400 格）即为完美通关
+  - 失败条件：蛇头撞到边界或自身则游戏结束
+  - 技术实现：纯 HTML + CSS + Canvas，无外部依赖
+  ============================================================
+-->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -5,12 +16,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>贪吃蛇 | 经典小游戏</title>
   <style>
+    /* 全局禁用文字选中，避免游戏中误选文本 */
     * {
       user-select: none;
     }
 
+    /* 页面主体：深绿色渐变背景，flex 水平垂直居中 */
     body {
-      background: linear-gradient(145deg, #1a472a 0%, #0e2a1a 100%);
+      background: linear-gradient(145deg, #1a472a 0%, #0e2a1a 100%); /* 深绿渐变 */
       min-height: 100vh;
       display: flex;
       justify-content: center;
@@ -20,7 +33,7 @@
       padding: 20px;
     }
 
-    /* 游戏卡片 */
+    /* 游戏卡片容器：深色圆角卡片，内含画布和信息面板 */
     .game-container {
       background: #1e2a1c;
       border-radius: 48px;
@@ -51,6 +64,7 @@
       backdrop-filter: blur(2px);
     }
 
+    /* 分数数字显示框：黑色背景、绿色文字、等宽字体 */
     .score-box {
       background: black;
       padding: 6px 18px;
@@ -63,6 +77,7 @@
       box-shadow: inset 0 0 5px #3e6b3a, 0 2px 4px rgba(0,0,0,0.3);
     }
 
+    /* 分数标签文字样式 */
     .score-label {
       color: #c0e0b0;
       font-size: 16px;
@@ -71,6 +86,7 @@
       text-shadow: 0 1px 0 #0a2f0a;
     }
 
+    /* 重新开始按钮：橙色圆角按钮，带底部阴影模拟立体按键效果 */
     .restart-btn {
       background: #ffb347;
       border: none;
@@ -86,11 +102,13 @@
       transform: translateY(-2px);
     }
 
+    /* 按钮按下状态：位移+阴影缩小，模拟物理按压反馈 */
     .restart-btn:active {
       transform: translateY(3px);
       box-shadow: 0 1px 0 #a1581a;
     }
 
+    /* 游戏状态文字：半透明黑色背景，显示"游戏中"/"游戏结束"等状态 */
     .status {
       background: #00000066;
       padding: 5px 16px;
@@ -101,6 +119,7 @@
       backdrop-filter: blur(4px);
     }
 
+    /* 操作提示：居中显示方向键提示信息 */
     .controls-tip {
       text-align: center;
       margin-top: 18px;
@@ -115,6 +134,7 @@
       font-weight: 500;
     }
 
+    /* 脉冲动画：用于状态文字的呼吸闪烁效果（透明度在 0.7~1 之间变化） */
     @keyframes pulse {
       0% { opacity: 0.7; }
       100% { opacity: 1; }
@@ -122,38 +142,63 @@
   </style>
 </head>
 <body>
+<!-- 外层包裹容器 -->
 <div>
+  <!-- 游戏主容器卡片，包含画布和信息面板 -->
   <div class="game-container">
+    <!-- 游戏画布：20x20 网格，每格 20px，总 400x400 像素 -->
     <canvas id="snakeCanvas" width="400" height="400"></canvas>
 
+    <!-- 信息面板：显示分数和重新开始按钮 -->
     <div class="info-panel">
       <div>
+        <!-- 分数标签 -->
         <span class="score-label">🐍 SCORE</span>
+        <!-- 当前分数数字 -->
         <span class="score-box" id="scoreDisplay">0</span>
       </div>
+      <!-- 重新开始按钮 -->
       <button class="restart-btn" id="restartButton">🍎 新的一局</button>
     </div>
+    <!-- 底部栏：左侧游戏状态 + 右侧操作提示 -->
     <div style="display: flex; justify-content: space-between; align-items: center;">
+      <!-- 游戏状态文字（游戏中 / 游戏结束 / 完美通关等） -->
       <div class="status" id="gameStatusText">▶ 游戏中</div>
+      <!-- 方向键操作提示 -->
       <div class="controls-tip">⬆ ⬇ ⬅ ➡  方向键控制</div>
     </div>
   </div>
 </div>
 
 <script>
+  /* ============================================================
+     贪吃蛇游戏核心逻辑（立即执行函数 IIFE，避免全局污染）
+     ============================================================ */
   (function(){
-    // ---------- 游戏配置 ----------
+    // ==================== 游戏配置常量 ====================
+    // BOARD_SIZE: 棋盘每行/列的格子数（20×20 = 400 格）
+    // CELL_SIZE:  每个格子的像素尺寸
+    // TICK_INTERVAL_MS: 蛇每次移动的时间间隔（毫秒），值越小游戏越快
     const BOARD_SIZE = 20;      // 20x20 网格
     const CELL_SIZE = 20;       // 像素
     const TICK_INTERVAL_MS = 150;  // 移动间隔(ms)
 
-    // DOM 元素
+    // ==================== DOM 元素引用 ====================
+    // canvas: 游戏画布对象，所有图形都绘制在上面
+    // ctx:    2D 绘图上下文，调用绘图 API 的入口
     const canvas = document.getElementById('snakeCanvas');
     const ctx = canvas.getContext('2d');
     const scoreSpan = document.getElementById('scoreDisplay');
     const statusSpan = document.getElementById('gameStatusText');
 
-    // 游戏状态变量
+    // ==================== 游戏状态变量 ====================
+    // snake:         蛇身体坐标数组，索引 0 为蛇头，每个元素 {x, y}
+    // food:          当前食物坐标 {x, y}
+    // direction:     当前实际移动方向（RIGHT/LEFT/UP/DOWN）
+    // nextDirection: 玩家按键后暂存的下一方向（防止一帧内多次反向）
+    // score:         当前得分（每吃一个食物 +1）
+    // gameLoop:      setInterval 返回的定时器 ID，用于停止游戏循环
+    // isGameRunning: 游戏运行标志，true=运行中 / false=已结束
     let snake = [];          // 坐标数组 {x, y}
     let food = { x: 12, y: 10 };
     let direction = 'RIGHT';    // 当前移动方向
@@ -162,7 +207,9 @@
     let gameLoop = null;
     let isGameRunning = true;    // true: 运行中 / false: 结束
 
-    // ---------- 初始化游戏 ----------
+    // ==================== 初始化游戏 ====================
+    // 将蛇重置为初始 3 格（水平放置于棋盘中央），方向朝右
+    // 重置分数和运行状态，生成新食物，启动定时器循环
     function initGame() {
       // 蛇的初始结构: 3格，水平放置
       snake = [
@@ -190,7 +237,11 @@
       drawGame();
     }
 
-    // 生成不重叠的食物
+    // ==================== 生成食物 ====================
+    // 随机生成食物坐标，确保不会与蛇身重叠
+    // 算法：先随机尝试最多 3000 次（快速路径）
+    //        若失败（蛇占了大部分格子），则遍历所有格子找到空位
+    //        若蛇已占满全部格子，则触发胜利
     function generateValidFood() {
       const totalCells = BOARD_SIZE * BOARD_SIZE;
       if (snake.length >= totalCells) {
@@ -235,7 +286,9 @@
       scoreSpan.innerText = score;
     }
 
-    // 游戏结束逻辑
+    // ==================== 游戏结束处理 ====================
+    // 参数 win: true 表示胜利（蛇填满棋盘），false 表示失败（撞墙/撞自己）
+    // 停止定时器循环，更新状态文字和颜色，最后重绘一次画面（含半透明遮罩）
     function endGame(win = false) {
       if (!isGameRunning) return;
       isGameRunning = false;
@@ -251,13 +304,19 @@
       drawGame();  // 最后绘制一次结束画面
     }
 
-    // 核心移动逻辑
+    // ==================== 蛇的移动逻辑（核心） ====================
+    // 流程：
+    //   1. 应用暂存方向 nextDirection，禁止 180 度掉头
+    //   2. 根据方向计算新蛇头坐标
+    //   3. 检测是否吃到食物
+    //   4. 在蛇头前端插入新坐标（unshift），若未吃食物则移除尾部（pop）
+    //   5. 碰撞检测：边界碰撞 + 自身碰撞
     function moveSnake() {
       if (!isGameRunning) return false;
       
       // 正式采用暂存的方向，防止一帧内多次反向
       let newDir = nextDirection;
-      // 禁止原地掉头
+      // 禁止 180 度掉头（如正在向右走时不能直接向左）
       if ((newDir === 'RIGHT' && direction === 'LEFT') ||
           (newDir === 'LEFT' && direction === 'RIGHT') ||
           (newDir === 'UP' && direction === 'DOWN') ||
@@ -276,10 +335,10 @@
         default: break;
       }
       
-      // 检查是否吃到食物
+      // 检测新蛇头是否与食物坐标重合（即"吃到食物"）
       const willEat = (newHead.x === food.x && newHead.y === food.y);
       
-      // 执行移动 (先加头，再决定是否删尾)
+      // 执行移动：先在数组头部插入新蛇头，再根据是否吃到食物决定是否删除尾部
       snake.unshift(newHead);
       if (!willEat) {
         snake.pop();
@@ -296,14 +355,14 @@
         }
       }
       
-      // 碰撞检测 (边界 & 自身)
+      // === 碰撞检测 ===
       const head = snake[0];
       // 边界碰撞
       if (head.x < 0 || head.x >= BOARD_SIZE || head.y < 0 || head.y >= BOARD_SIZE) {
         endGame(false);
         return false;
       }
-      // 自身碰撞 (注意新头部可能与身体重叠，但排除蛇头第0个)
+      // 自身碰撞检测：从第 1 节开始遍历（跳过蛇头本身），检查蛇头是否与任意身体节重叠
       for (let i = 1; i < snake.length; i++) {
         if (snake[i].x === head.x && snake[i].y === head.y) {
           endGame(false);
@@ -314,14 +373,21 @@
       return true;
     }
     
-    // 时钟滴答
+    // ==================== 主循环回调（定时器每 TICK_INTERVAL_MS 毫秒触发） ====================
+    // 每次执行：移动蛇 -> 重绘画面
     function gameTick() {
       if (!isGameRunning) return;
       moveSnake();
       drawGame();
     }
     
-    // ------------------- 绘图模块 (现代风格) -------------------
+    // ==================== 绘图模块 ====================
+    // 使用 Canvas 2D API 渲染所有游戏元素：
+    //   - 暗绿色网格背景线
+    //   - 红色食物（带高光高亮效果）
+    //   - 绿色渐变蛇身（蛇头颜色更亮）
+    //   - 蛇头上的双眼（位置随移动方向变化）
+    //   - 游戏结束时叠加半透明黑色遮罩 + 提示文字
     function drawGame() {
       if (!ctx) return;
       // 背景网格
@@ -340,7 +406,7 @@
         ctx.stroke();
       }
       
-      // 绘制食物（带高光）
+      // --- 绘制食物（红色圆形 + 浅色高光 + 白色亮点，营造立体感） ---
       ctx.shadowBlur = 0;
       ctx.fillStyle = '#ff5252';
       ctx.beginPath();
@@ -355,7 +421,8 @@
       ctx.arc(food.x * CELL_SIZE + CELL_SIZE/2 - 2, food.y * CELL_SIZE + CELL_SIZE/2 - 2, 1, 0, Math.PI*2);
       ctx.fill();
       
-      // 绘制蛇 (渐变身体)
+      // --- 绘制蛇（渐变绿色方块 + 蛇头双眼） ---
+      // 遍历蛇身每一节，蛇头(i=0)用亮绿色渐变，身体用稍暗的绿色渐变
       for (let i = 0; i < snake.length; i++) {
         const seg = snake[i];
         const posX = seg.x * CELL_SIZE;
@@ -394,7 +461,8 @@
         }
       }
       
-      // 如果游戏结束, 覆盖一层半透明 + 提示文字
+      // --- 游戏结束遮罩层 ---
+      // 在画布上叠加半透明黑色遮罩，居中显示提示文字
       if (!isGameRunning) {
         ctx.fillStyle = 'rgba(0,0,0,0.65)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -410,7 +478,10 @@
       }
     }
     
-    // ---------- 键盘控制 ----------
+    // ==================== 键盘事件处理 ====================
+    // 监听方向键（ArrowUp/ArrowDown/ArrowLeft/ArrowRight）
+    // 将玩家意图暂存到 nextDirection，在下一帧 moveSnake() 中才真正生效
+    // 游戏结束时不再响应方向键输入
     function handleKeydown(e) {
       if (!isGameRunning) return;  // 游戏结束不再响应方向，但可以通过按钮重开
       const key = e.key;
@@ -424,14 +495,20 @@
       }
     }
     
-    // 重置游戏(外部调用)
+    // ==================== 重置并重新开始游戏 ====================
+    // 清除当前定时器，调用 initGame() 进行完全重置
+    // 由"新的一局"按钮的点击事件调用
     function resetAndRestart() {
       // 重置所有全局变量
       if (gameLoop) clearInterval(gameLoop);
       initGame();   // 全新对局
     }
     
-    // ---------- 事件绑定 ----------
+    // ==================== 事件绑定与游戏启动 ====================
+    // 页面加载完成后：
+    //   1. 调用 initGame() 启动第一局游戏
+    //   2. 绑定键盘方向键事件监听器
+    //   3. 绑定"新的一局"按钮的点击事件
     window.addEventListener('load', () => {
       initGame();
       window.addEventListener('keydown', handleKeydown);

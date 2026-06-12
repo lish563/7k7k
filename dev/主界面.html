@@ -1,0 +1,913 @@
+<!--
+    ============================================================
+    文件：7组.html
+    类型：游戏回廊主页（游戏大厅/游戏中心）
+    说明：这是经典七合一游戏合集的主入口页面（游戏回廊）。
+          页面展示了7款经典小游戏的卡片，用户可以通过搜索栏
+          按名称或描述筛选游戏，点击任意卡片即可跳转到对应
+          的游戏页面进行游玩。
+    包含游戏：推箱子、贪吃蛇、星际战机、打地鼠、小恐龙跑酷、
+              五子棋、俄罗斯方块
+    技术栈：纯HTML + CSS + 原生JavaScript（无外部依赖）
+    ============================================================
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>游戏回廊 | 经典七合一 · 七彩流光</title>
+    <style>
+        /* ===== 全局重置样式 ===== */
+        /* 清除所有元素的默认外边距和内边距，统一盒模型为 border-box */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* ===== 页面主体样式 ===== */
+        /* 使用径向渐变作为深色背景，营造沉浸式游戏氛围 */
+        body {
+            background: radial-gradient(circle at 10% 20%, #11212e, #0a1620);
+            font-family: 'Segoe UI', 'Poppins', 'Inter', system-ui, -apple-system, 'Noto Sans TC', monospace;
+            padding: 2rem 1.5rem;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        /* ===== 背景噪点纹理 ===== */
+        /* 通过伪元素叠加SVG噪点纹理，增加背景的质感和视觉层次 */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='1' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ===== 游戏大厅主容器 ===== */
+        /* 限制最大宽度并居中，作为整个页面内容的包裹容器 */
+        .game-hub {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* ===== 英雄区域（顶部横幅） ===== */
+        /* 页面顶部的标题、副标题和搜索栏区域 */
+        .hero {
+            margin-bottom: 2.5rem;
+            backdrop-filter: blur(4px);
+        }
+
+        /* 顶部三列网格布局：左侧占位 | 居中标题 | 右侧搜索栏 */
+        .hero-top {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        /* ===== 标题区域样式 ===== */
+        /* 标题容器：居中对齐，包含emoji图标和彩虹渐变文字 */
+        .hero-title-wrapper {
+            justify-self: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            font-weight: 800;
+            letter-spacing: 2px;
+        }
+
+        .hero-title-wrapper h1 {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-size: 2.8rem;
+            margin: 0;
+            font-weight: 800;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .hero-emoji {
+            font-size: 2.8rem;
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));
+            background: none;
+            color: #FFE6B0;
+            display: inline-block;
+        }
+
+        .hero-title {
+            background: linear-gradient(135deg, 
+                #FF3B3B, #FF7F00, #FFD700, 
+                #00CC00, #0099FF, #4B0082, #9B30FF);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.2);
+            animation: shimmer 3s infinite linear;
+            background-size: 200% auto;
+            font-size: 2.8rem;
+            font-weight: 800;
+        }
+
+        /* 彩虹流光动画：标题文字的渐变背景不断横向移动，产生流光效果 */
+        @keyframes shimmer {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        /* ===== 搜索栏样式 ===== */
+        /* 搜索栏容器：圆角胶囊形状，毛玻璃背景，带边框光晕 */
+        .search-wrapper {
+            justify-self: end;
+            display: flex;
+            align-items: center;
+            background: rgba(18, 28, 35, 0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 60px;
+            padding: 0.3rem 0.3rem 0.3rem 1.2rem;
+            border: 1px solid rgba(255, 215, 150, 0.4);
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .search-wrapper:focus-within {
+            border-color: #ffb347;
+            box-shadow: 0 0 0 2px rgba(255, 180, 70, 0.3);
+            background: rgba(25, 38, 48, 0.85);
+        }
+
+        /* 搜索输入框：透明背景，无边框，与搜索栏融为一体 */
+        #gameSearchInput {
+            background: transparent;
+            border: none;
+            padding: 0.6rem 0;
+            font-size: 0.95rem;
+            color: #f5efdf;
+            font-family: inherit;
+            width: 190px;
+            outline: none;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+        #gameSearchInput::placeholder {
+            color: #bfcfd9;
+            font-weight: 400;
+            font-size: 0.85rem;
+        }
+
+        /* 搜索清除按钮：圆形按钮，点击清空搜索内容 */
+        .search-clear {
+            background: rgba(255, 200, 120, 0.2);
+            border: none;
+            color: #ffdd99;
+            font-size: 1.25rem;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+            margin-left: 4px;
+            font-weight: bold;
+        }
+        .search-clear:hover {
+            background: rgba(255, 160, 60, 0.6);
+            color: white;
+            transform: scale(1.02);
+        }
+
+        .hero-left-placeholder {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* ===== 副标题样式 ===== */
+        /* 页面副标题："指尖时光 · 妙趣横生"，胶囊形标签 */
+        .sub {
+            color: #CFDEC8;
+            font-size: 1rem;
+            background: rgba(10, 20, 28, 0.55);
+            backdrop-filter: blur(12px);
+            display: inline-block;
+            padding: 0.5rem 1.8rem;
+            border-radius: 80px;
+            margin-top: 0.4rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            border: 0.5px solid rgba(255,215,150,0.3);
+            text-align: center;
+            width: auto;
+        }
+
+        .sub-wrapper {
+            text-align: center;
+            width: 100%;
+        }
+
+        /* ===== 搜索结果统计 ===== */
+        /* 显示搜索匹配结果数量的提示文字 */
+        .search-stats {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #ffdfb3;
+            margin-top: 0.8rem;
+            min-height: 28px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            background: rgba(0,0,0,0.2);
+            display: inline-block;
+            width: auto;
+            padding: 0.2rem 1rem;
+            border-radius: 40px;
+            backdrop-filter: blur(2px);
+        }
+        .stats-wrapper {
+            text-align: center;
+            margin-top: 0.5rem;
+        }
+
+        /* ===== 游戏卡片网格布局 ===== */
+        /* 使用CSS Grid实现响应式网格，最小卡片宽度310px，自动填充列数 */
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+            gap: 2rem;
+            margin: 2.5rem 0 2rem;
+            transition: all 0.2s;
+        }
+
+        /* ===== 游戏卡片基础样式 ===== */
+        /* 每张游戏卡片：毛玻璃背景、圆角、阴影、悬浮动效 */
+        .game-card {
+            background: rgba(28, 38, 48, 0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 48px;
+            overflow: hidden;
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,240,0.08);
+            transition: all 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            cursor: pointer;
+            border: 1px solid rgba(255, 200, 120, 0.25);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 卡片悬浮效果：上移10px，背景变亮，边框高亮，阴影加深 */
+        .game-card:hover {
+            transform: translateY(-10px);
+            background: rgba(38, 52, 68, 0.8);
+            border-color: rgba(255, 190, 80, 0.6);
+            box-shadow: 0 30px 45px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 搜索匹配高亮：当卡片匹配搜索关键词时，边框变为金色高亮 */
+        .game-card.match-highlight {
+            border-color: #ffc164;
+            box-shadow: 0 0 0 2px rgba(255, 193, 100, 0.3), 0 20px 35px -12px rgba(0,0,0,0.4);
+        }
+
+        /* ===== 卡片图片/预览区域 ===== */
+        /* 卡片顶部的预览区域，4:3比例，展示游戏emoji图标 */
+        .card-img {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            background: linear-gradient(135deg, #1a2a33, #0f1a20);
+            position: relative;
+            overflow: hidden;
+            border-bottom: 2px solid rgba(255, 180, 60, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 预览内容层：绝对定位覆盖整个图片区域，居中显示emoji和文字 */
+        .preview-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(145deg, #2a3a44, #1a2a33);
+            font-family: 'Segoe UI', 'Poppins', system-ui, monospace;
+            text-align: center;
+            z-index: 2;
+        }
+        .preview-emoji {
+            font-size: 5.5rem;
+            line-height: 1.2;
+            margin-bottom: 0.5rem;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }
+        .preview-text {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FFF2CC, #FFE0A3);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow: none;
+            font-weight: 800;
+        }
+        .card-img .game-img {
+            display: none;
+        }
+
+        /* ===== 卡片内容区域 ===== */
+        /* 卡片下半部分：包含游戏标题、描述、趣味emoji和开始按钮 */
+        .card-content {
+            padding: 1.4rem 1.4rem 1.6rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 游戏标题行：emoji图标 + 游戏名称 */
+        .game-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 0.6rem;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+        }
+
+        .game-emoji {
+            background: rgba(255, 200, 110, 0.2);
+            padding: 0 12px;
+            border-radius: 50px;
+            font-size: 1.45rem;
+            backdrop-filter: blur(2px);
+            transition: all 0.2s;
+        }
+
+        .game-name-text {
+            font-size: 1.75rem;
+            font-weight: 800;
+            background: linear-gradient(115deg, 
+                #FF4D4D, #FFA500, #FFFF00, 
+                #00CC66, #3399FF, #9933FF, #FF66CC);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            background-size: 180% auto;
+            animation: rainbowMove 2s ease infinite alternate;
+        }
+        
+        /* 彩虹文字动画：游戏名称的渐变色不断横向移动 */
+        @keyframes rainbowMove {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+
+        .game-desc {
+            color: #C8D9E6;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            margin: 8px 0 14px 0;
+            font-weight: 450;
+            opacity: 0.9;
+        }
+
+        .fun-emoji {
+            display: flex;
+            gap: 10px;
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 6px 14px;
+            border-radius: 60px;
+            width: fit-content;
+            backdrop-filter: blur(4px);
+        }
+
+        /* ===== 开始游戏按钮 ===== */
+        /* 橙色渐变按钮，带底部阴影模拟3D按压效果 */
+        .play-btn {
+            background: linear-gradient(105deg, #FFB347, #FF8C2E);
+            border: none;
+            color: #231f1a;
+            font-weight: 800;
+            padding: 12px 0;
+            border-radius: 60px;
+            font-size: 1rem;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.2s;
+            cursor: pointer;
+            margin-top: 10px;
+            box-shadow: 0 5px 0 #a35117;
+            transform: translateY(-2px);
+            letter-spacing: 1px;
+        }
+
+        .game-card:active .play-btn {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #a35117;
+        }
+
+        .play-btn:hover {
+            background: linear-gradient(105deg, #FFC164, #FFA042);
+            box-shadow: 0 5px 0 #b55d1f;
+        }
+
+        /* ===== 页脚提示 ===== */
+        /* 页面底部的操作提示信息 */
+        .footer-note {
+            text-align: center;
+            margin-top: 3rem;
+            color: #8FBCBB;
+            font-size: 0.8rem;
+            border-top: 1px dashed rgba(200, 180, 120, 0.3);
+            padding-top: 1.8rem;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            background: transparent;
+            font-weight: 450;
+        }
+
+        /* 无搜索结果提示：当搜索无匹配时显示的占位提示框 */
+        .no-result-tip {
+            text-align: center;
+            padding: 3rem 1rem;
+            background: rgba(0,0,0,0.4);
+            border-radius: 48px;
+            backdrop-filter: blur(8px);
+            margin: 1rem 0;
+            color: #ffdaaa;
+            font-size: 1.2rem;
+            font-weight: 500;
+            grid-column: 1 / -1;
+        }
+
+        /* ===== 响应式布局：平板/小屏幕（≤700px） ===== */
+        /* 移动端适配：标题和搜索栏改为单列垂直排列，缩小字体和间距 */
+        @media (max-width: 700px) {
+            body { padding: 1.2rem; }
+            .hero-top {
+                grid-template-columns: 1fr;
+                gap: 0.8rem;
+                justify-items: center;
+            }
+            .hero-title-wrapper {
+                justify-self: center;
+                order: 1;
+            }
+            .search-wrapper {
+                justify-self: center;
+                order: 2;
+                width: 90%;
+                max-width: 320px;
+            }
+            .hero-left-placeholder {
+                display: none;
+            }
+            .hero-title-wrapper h1 {
+                font-size: 2rem;
+            }
+            .hero-emoji {
+                font-size: 2rem;
+            }
+            .hero-title {
+                font-size: 2rem;
+            }
+            .game-name-text {
+                font-size: 1.45rem;
+            }
+            .game-grid {
+                gap: 1.3rem;
+            }
+            .card-content {
+                padding: 1rem;
+            }
+            .sub {
+                font-size: 0.9rem;
+                padding: 0.4rem 1.2rem;
+            }
+            .preview-emoji {
+                font-size: 3.5rem;
+            }
+            .preview-text {
+                font-size: 1.3rem;
+            }
+        }
+
+        /* ===== 响应式布局：手机小屏（≤480px） ===== */
+        /* 进一步缩小emoji、按钮和预览区域的尺寸 */
+        @media (max-width: 480px) {
+            .game-emoji { font-size: 1.1rem; padding: 0 8px; }
+            .play-btn { font-size: 0.9rem; }
+            .hero-title-wrapper h1 {
+                gap: 6px;
+            }
+            .preview-emoji {
+                font-size: 2.8rem;
+            }
+            .preview-text {
+                font-size: 1.1rem;
+            }
+        }
+
+        /* ===== 自定义滚动条样式（WebKit浏览器） ===== */
+        /* 将滚动条设置为细窄的橙色样式，与整体深色主题搭配 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f1a1f;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #f0b27a;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+<!-- ===== 游戏回廊主容器 ===== -->
+<div class="game-hub">
+    <!-- ===== 英雄区域：包含主标题、搜索栏、副标题和搜索统计 ===== -->
+    <div class="hero">
+        <!-- 顶部行：三列布局 —— 左侧占位(用于平衡)、中间标题、右侧搜索栏 -->
+        <div class="hero-top">
+            <div class="hero-left-placeholder"></div>
+            <div class="hero-title-wrapper">
+                <h1>
+                    <span class="hero-emoji">🎮</span>
+                    <span class="hero-title">经典游戏回廊</span>
+                    <span class="hero-emoji">🕹️</span>
+                </h1>
+            </div>
+            <div class="search-wrapper">
+                <input type="text" id="gameSearchInput" placeholder="🔍 搜游戏名称 / 描述..." autocomplete="off">
+                <button class="search-clear" id="searchClearBtn" aria-label="清空搜索">✖</button>
+            </div>
+        </div>
+        <div class="sub-wrapper">
+            <div class="sub">✨ 指尖时光 · 妙趣横生 ✨</div>
+        </div>
+        <div class="stats-wrapper">
+            <div class="search-stats" id="searchStats"></div>
+        </div>
+    </div>
+
+    <!-- ===== 游戏卡片网格 ===== -->
+    <!-- 包含7款游戏的卡片，每张卡片通过 data-game-url 属性记录对应的游戏页面地址 -->
+    <div class="game-grid" id="gameGrid">
+        <!-- 1. 推箱子 -->
+        <div class="game-card" data-game-url="推箱子.html">
+            <div class="card-img">
+                <div class="preview-content">
+                    <div class="preview-emoji">📦</div>
+                    <div class="preview-text">推箱子</div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="game-title">
+                    <span class="game-emoji">🧩</span>
+                    <span class="game-name-text">推箱子 · 仓库番</span>
+                </div>
+                <div class="game-desc">策略搬运，将木箱推到金色目标点！巧妙规划路线，挑战脑力极限。</div>
+                <div class="fun-emoji">📦 ➡️ ⭐ 🤔 🧠</div>
+                <div class="play-btn">▶ 开始挑战 🎯</div>
+            </div>
+        </div>
+
+        <!-- 2. 贪吃蛇 -->
+        <div class="game-card" data-game-url="贪吃蛇.html">
+            <div class="card-img">
+                <div class="preview-content">
+                    <div class="preview-emoji">🐍</div>
+                    <div class="preview-text">贪吃蛇</div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="game-title">
+                    <span class="game-emoji">🐍</span>
+                    <span class="game-name-text">贪吃蛇 · 经典永存</span>
+                </div>
+                <div class="game-desc">控制小蛇吃掉红色果实，不断变长，注意别撞墙或自己的身体！</div>
+                <div class="fun-emoji">🍎 🐍 💥 🏆</div>
+                <div class="play-btn">▶ 开始贪吃 🍏</div>
+            </div>
+        </div>
+
+        <!-- 3. 星际战机 -->
+        <div class="game-card" data-game-url="飞机打怪兽.html">
+            <div class="card-img">
+                <div class="preview-content">
+                    <div class="preview-emoji">🚀</div>
+                    <div class="preview-text">星际战机</div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="game-title">
+                    <span class="game-emoji">🛸</span>
+                    <span class="game-name-text">星际战机 · 打怪兽</span>
+                </div>
+                <div class="game-desc">操控未来战机，自动发射子弹！击落外星怪物，躲避碰撞，解锁更高分数。</div>
+                <div class="fun-emoji">💥 🔫 👾 ✨</div>
+                <div class="play-btn">▶ 紧急起飞 ⚡</div>
+            </div>
+        </div>
+
+        <!-- 4. 打地鼠 -->
+        <div class="game-card" data-game-url="打地鼠.html">
+            <div class="card-img">
+                <div class="preview-content">
+                    <div class="preview-emoji">🔨</div>
+                    <div class="preview-text">打地鼠</div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="game-title">
+                    <span class="game-emoji">🐭</span>
+                    <span class="game-name-text">打地鼠 · 敏捷考验</span>
+                </div>
+                <div class="game-desc">限定时间内挥动木槌，击中地鼠得分，小心炸弹！挑战手速极限。</div>
+                <div class="fun-emoji">⏰ 🔨 💣 ⚡ 🤯</div>
+                <div class="play-btn">▶ 拿起锤子 🧨</div>
+            </div>
+        </div>
+
+        <!-- 5. 小恐龙跑酷 -->
+        <div class="game-card" data-game-url="小恐龙跑酷.html">
+            <div class="card-img">
+                <div class="preview-content">
+                    <div class="preview-emoji">🦖</div>
+                    <div class="preview-text">小恐龙</div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="game-title">
+                    <span class="game-emoji">🦖</span>
+                    <span class="game-name-text">小恐龙跑酷 · 障碍狂奔</span>
+                </div>
+                <div class="game-desc">控制小恐龙跳跃或下蹲，躲避仙人掌和飞虫，奔跑越远得分越高！</div>
+                <div class="fun-emoji">🌵 🦗 🏃‍♂️ 💨</div>
+                <div class="play-btn">▶ 开始奔跑 🌵</div>
+            </div>
+        </div>
+
+        <!-- 6. 五子棋 -->
+        <div class="game-card" data-game-url="五子棋.html">
+            <div class="card-img">
+                <div class="preview-content">
+                    <div class="preview-emoji">⚫⚪</div>
+                    <div class="preview-text">五子棋</div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="game-title">
+                    <span class="game-emoji">🏮</span>
+                    <span class="game-name-text">五子棋 · 双人对弈</span>
+                </div>
+                <div class="game-desc">经典黑白博弈，五子连线即可获胜。双方轮流落子，享受静谧棋艺时光。</div>
+                <div class="fun-emoji">⚫️ ⚪️ ♟️ 🧘‍♂️ 🤝</div>
+                <div class="play-btn">▶ 对弈一局 🎋</div>
+            </div>
+        </div>
+
+        <!-- 7. 俄罗斯方块 -->
+        <div class="game-card" data-game-url="俄罗斯方块.html">
+            <div class="card-img">
+                <div class="preview-content">
+                    <div class="preview-emoji">🧩</div>
+                    <div class="preview-text">俄罗斯方块</div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="game-title">
+                    <span class="game-emoji">🧩</span>
+                    <span class="game-name-text">俄罗斯方块 · 经典下落</span>
+                </div>
+                <div class="game-desc">经典下落消除，七种方块变换无尽挑战！旋转、堆叠，挑战最高分数。</div>
+                <div class="fun-emoji">🔄 ⬇️ 🧩 🏆</div>
+                <div class="play-btn">▶ 开始消除 ⏬</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 页脚：操作提示信息 ===== -->
+    <div class="footer-note">
+        <span>🎲 点击卡片即刻游玩</span>
+        <span>✨ 七款经典 · 重温纯粹快乐</span>
+        <span>🔍 右上角搜索，快速定位心仪游戏</span>
+    </div>
+</div>
+
+<!-- ===== JavaScript 交互逻辑 ===== -->
+<!-- 使用IIFE（立即执行函数）封装，避免全局变量污染 -->
+<script>
+    (function() {
+        // ========== 搜索筛选功能 ==========
+        // 获取页面中的搜索相关DOM元素引用
+        const searchInput = document.getElementById('gameSearchInput');
+        const clearBtn = document.getElementById('searchClearBtn');
+        const searchStats = document.getElementById('searchStats');
+        const gameGrid = document.getElementById('gameGrid');
+        // 获取所有游戏卡片元素，并转换为数组便于后续操作
+        const gameCards = Array.from(document.querySelectorAll('.game-card'));
+        
+        // 为每个卡片附加搜索数据：将游戏名称和描述转为小写后存入自定义属性
+        // 这样搜索时可以直接通过属性值进行匹配，无需每次读取DOM
+        gameCards.forEach(card => {
+            const nameElem = card.querySelector('.game-name-text');
+            const descElem = card.querySelector('.game-desc');
+            let gameNameRaw = nameElem ? nameElem.innerText.trim() : '';
+            let gameDescRaw = descElem ? descElem.innerText.trim() : '';
+            card.setAttribute('data-search-name', gameNameRaw.toLowerCase());
+            card.setAttribute('data-search-desc', gameDescRaw.toLowerCase());
+        });
+        
+        /**
+         * 根据关键词筛选游戏卡片
+         * @param {string} keyword - 用户输入的搜索关键词
+         * 逻辑：将关键词转小写，依次匹配每张卡片的游戏名称和描述
+         *       匹配成功的卡片保留显示并添加高亮，不匹配的隐藏
+         *       搜索为空时恢复所有卡片的显示状态
+         */
+        function filterGamesByKeyword(keyword) {
+            const lowerKeyword = keyword.trim().toLowerCase();
+            let matchCount = 0;
+            
+            // 搜索关键词为空时：恢复所有卡片显示，清除高亮和统计信息
+            if (lowerKeyword === '') {
+                gameCards.forEach(card => {
+                    card.style.display = '';
+                    card.classList.remove('match-highlight');
+                });
+                searchStats.innerHTML = '';
+                removeNoResultMessage();
+                return;
+            }
+            
+            // 遍历所有卡片，检查名称或描述是否包含搜索关键词
+            gameCards.forEach(card => {
+                const nameMatch = card.getAttribute('data-search-name')?.includes(lowerKeyword) || false;
+                const descMatch = card.getAttribute('data-search-desc')?.includes(lowerKeyword) || false;
+                // 名称或描述任一匹配即视为命中
+                const isMatch = nameMatch || descMatch;
+                
+                if (isMatch) {
+                    card.style.display = '';
+                    card.classList.add('match-highlight');
+                    matchCount++;
+                } else {
+                    card.style.display = 'none';
+                    card.classList.remove('match-highlight');
+                }
+            });
+            
+            if (matchCount === 0) {
+                searchStats.innerHTML = '🔍 没有找到相关游戏，试试「贪吃」「五子棋」「俄罗斯」等关键词';
+                showNoResultMessage();
+            } else {
+                searchStats.innerHTML = `✨ 找到 ${matchCount} 款与「${escapeHtml(lowerKeyword)}」相关的游戏 ✨`;
+                removeNoResultMessage();
+            }
+        }
+        
+        function showNoResultMessage() {
+            removeNoResultMessage();
+            const noResultDiv = document.createElement('div');
+            noResultDiv.className = 'no-result-tip';
+            noResultDiv.id = 'noResultPlaceholder';
+            noResultDiv.innerHTML = '🕹️ 没有匹配的游戏 🎮<br><span style="font-size: 0.85rem;">试试搜 "贪吃蛇" "五子棋" "俄罗斯方块" 等关键词</span>';
+            gameGrid.appendChild(noResultDiv);
+        }
+        
+        function removeNoResultMessage() {
+            const existing = document.getElementById('noResultPlaceholder');
+            if (existing) existing.remove();
+        }
+        
+        /**
+         * HTML转义函数：防止XSS注入
+         * 将 & < > 等特殊字符转为HTML实体
+         */
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+        
+        function resetSearch() {
+            if (searchInput) searchInput.value = '';
+            filterGamesByKeyword('');
+        }
+        
+        // 搜索事件绑定
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                filterGamesByKeyword(e.target.value);
+            });
+        }
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                resetSearch();
+            });
+        }
+        
+        // ========== 游戏跳转功能 ==========
+        /**
+         * 统一跳转函数：导航到指定游戏页面
+         * @param {string} gameUrl - 游戏页面的相对URL（如 "推箱子.html"）
+         * 通过 window.location.href 实现同目录下的页面跳转
+         */
+        function navigateToGame(gameUrl) {
+            if (!gameUrl) {
+                console.warn('未找到游戏链接');
+                return;
+            }
+            // 直接跳转到同目录下的游戏HTML文件
+            window.location.href = gameUrl;
+        }
+        
+        /**
+         * 为所有游戏卡片绑定点击事件
+         * 策略：卡片整体可点击，同时"开始游戏"按钮也单独绑定
+         *       使用 e.stopPropagation() 防止按钮点击时事件冒泡到卡片导致重复触发
+         *       通过 _clickHandler 属性存储引用，支持先移除再重新绑定，避免重复监听
+         */
+        function bindGameCardEvents() {
+            gameCards.forEach(card => {
+                const targetUrl = card.getAttribute('data-game-url');
+                if (!targetUrl) return;
+                
+                // 获取卡片内的按钮
+                const playBtn = card.querySelector('.play-btn');
+                
+                // 移除已有的监听器，避免重复绑定
+                if (card._clickHandler) {
+                    card.removeEventListener('click', card._clickHandler);
+                }
+                if (playBtn && playBtn._clickHandler) {
+                    playBtn.removeEventListener('click', playBtn._clickHandler);
+                }
+                
+                // 定义跳转处理函数
+                const clickHandler = (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    navigateToGame(targetUrl);
+                };
+                
+                // 绑定卡片点击（点击卡片任何区域都跳转）
+                card.addEventListener('click', clickHandler);
+                card._clickHandler = clickHandler;
+                
+                // 绑定按钮点击（防止事件冒泡导致重复，但也执行跳转）
+                if (playBtn) {
+                    const btnHandler = (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        navigateToGame(targetUrl);
+                    };
+                    playBtn.addEventListener('click', btnHandler);
+                    playBtn._clickHandler = btnHandler;
+                }
+            });
+        }
+        
+        /**
+         * 初始化函数：页面加载完成后执行
+         * 1. 绑定所有游戏卡片的点击跳转事件
+         * 2. 在控制台输出启动信息（便于开发调试）
+         * 注：搜索功能通过 input 事件实时触发，无需额外初始化
+         */
+        function init() {
+            bindGameCardEvents();
+            // 确保搜索不影响跳转（搜索只是隐藏显示，不影响绑定）
+            console.log('游戏回廊已启动，共 ' + gameCards.length + ' 款游戏，点击任意卡片即可开始游玩！');
+        }
+        
+        init();
+    })();
+</script>
+</body>
+</html>

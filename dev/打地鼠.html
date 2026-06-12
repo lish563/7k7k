@@ -1,15 +1,32 @@
+<!--
+    ============================================================
+    文件：打地鼠.html
+    类型：经典街机小游戏 (Whack-a-Mole)
+    说明：这是一款基于 Canvas 的打地鼠网页游戏。
+          - 游戏时长 60 秒倒计时
+          - 3x3 九宫格地鼠洞布局
+          - 三种地鼠类型：普通地鼠(+10分)、黄金地鼠(+30分)、炸弹(-10分)
+          - 地鼠随机从洞中冒出，玩家需在地鼠消失前点击打击
+          - 70% 概率普通地鼠，20% 概率黄金地鼠，10% 概率炸弹
+          - 纯前端实现，使用 Canvas 2D 手绘所有图形
+    ============================================================
+-->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <!-- 字符编码：UTF-8，确保中文正常显示 -->
     <meta charset="UTF-8">
+    <!-- 视口设置：自适应移动设备，禁止用户缩放 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>打地鼠 · 经典街机</title>
     <style>
+        /* ===== 全局重置：禁止文本选中，去除移动端点击高亮 ===== */
         * {
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* 页面主体：绿色渐变背景，居中布局，模拟草地氛围 */
         body {
             background: linear-gradient(145deg, #2a6b3c 0%, #1d4d2a 100%);
             min-height: 100vh;
@@ -21,6 +38,7 @@
             padding: 20px;
         }
 
+        /* 游戏主容器：棕色木纹风格边框，大圆角，投影营造立体感 */
         .game-container {
             background: #6b4c3b;
             border-radius: 64px;
@@ -28,6 +46,7 @@
             box-shadow: 0 25px 40px rgba(0, 0, 0, 0.6), inset 0 1px 3px rgba(255, 255, 255, 0.2);
         }
 
+        /* 画布：游戏主绘制区域，棕色边框+投影，鼠标变为手型指针 */
         canvas {
             display: block;
             margin: 0 auto;
@@ -37,6 +56,7 @@
             cursor: pointer;
         }
 
+        /* 信息面板：包含得分、倒计时和重新开始按钮，深色胶囊背景 */
         .info-panel {
             display: flex;
             justify-content: space-between;
@@ -50,6 +70,7 @@
             flex-wrap: wrap;
         }
 
+        /* 得分显示框：金色字体，胶囊形状，内凹投影 */
         .score-box {
             background: #1f1912;
             padding: 6px 20px;
@@ -61,6 +82,7 @@
             box-shadow: inset 0 0 6px #5f4c2e, 0 3px 6px rgba(0,0,0,0.3);
         }
 
+        /* 倒计时显示框：天蓝色字体，胶囊形状 */
         .time-box {
             background: #1f1912;
             padding: 6px 20px;
@@ -71,6 +93,7 @@
             font-family: monospace;
         }
 
+        /* 重新开始按钮：金色背景，按下时有下沉效果模拟实体按钮 */
         button {
             background: #e0a82b;
             border: none;
@@ -86,11 +109,13 @@
             transform: translateY(-2px);
         }
 
+        /* 按钮按下状态：按钮下沉，阴影减小，模拟物理按压 */
         button:active {
             transform: translateY(3px);
             box-shadow: 0 1px 0 #7a4c1a;
         }
 
+        /* 状态消息栏：半透明黑底，显示游戏提示信息（如打中/打空） */
         .status {
             background: #000000aa;
             padding: 6px 20px;
@@ -101,6 +126,7 @@
             backdrop-filter: blur(4px);
         }
 
+        /* 提示信息：居中显示三种地鼠的得分规则说明 */
         .tips {
             text-align: center;
             margin-top: 18px;
@@ -115,6 +141,7 @@
             font-weight: 500;
         }
 
+        /* 响应式布局：屏幕宽度小于560px时缩小字体和内边距，适配手机 */
         @media (max-width: 560px) {
             .game-container { padding: 16px; }
             .score-box { font-size: 20px; padding: 4px 16px; }
@@ -124,21 +151,31 @@
     </style>
 </head>
 <body>
+<!-- 游戏整体外层容器 -->
 <div>
+    <!-- 游戏主容器（棕色木框风格） -->
     <div class="game-container">
+        <!-- 游戏画布：550x550 像素，所有地鼠、洞穴、特效均在此绘制 -->
         <canvas id="gameCanvas" width="550" height="550"></canvas>
 
+        <!-- 信息面板：得分、剩余时间、重新开始按钮 -->
         <div class="info-panel">
+            <!-- 当前得分显示 -->
             <div class="score-box">
                 🔨 得分 <span id="scoreValue">0</span>
             </div>
+            <!-- 剩余时间显示（初始60秒） -->
             <div class="time-box">
                 ⏱️ 剩余 <span id="timeValue">60</span> 秒
             </div>
+            <!-- 重新开始按钮 -->
             <button id="restartBtn">🔄 重新开局</button>
         </div>
+        <!-- 状态信息行：左侧状态消息 + 右侧得分规则提示 -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+            <!-- 游戏状态消息（打中、打空、游戏结束等提示） -->
             <div class="status" id="gameStatusMsg">🐭 快打地鼠！点击冒头的家伙 🐭</div>
+            <!-- 三种地鼠的得分规则提示 -->
             <div class="tips">💥 普通地鼠+10分 | 🎩 黄金地鼠+30分 | 💣 炸弹-10分</div>
         </div>
     </div>
@@ -146,199 +183,267 @@
 
 <script>
     (function(){
-        // ---------- 打地鼠 · 核心模块 ----------
+        /* 整个游戏逻辑包裹在立即执行函数(IIFE)中，避免污染全局命名空间 */
+        // ========== 打地鼠 · 核心模块 ==========
+
+        /* 获取页面中的 Canvas 元素及 2D 绘图上下文，后续所有图形绘制均通过 ctx 完成 */
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
-        // 游戏设置
-        let gameActive = true;
-        let score = 0;
-        let timeLeft = 60;          // 60秒倒计时
-        let timerInterval = null;
+        /* ===== 游戏核心状态变量 ===== */
+        let gameActive = true;      // 游戏是否正在进行中（false 时禁止点击和生成地鼠）
+        let score = 0;              // 当前得分，最低为 0
+        let timeLeft = 60;          // 剩余时间（秒），60 秒倒计时
+        let timerInterval = null;   // 倒计时定时器 ID，用于 setInterval
         
-        // 地鼠洞参数: 3x3 网格 (九宫格)
-        const ROWS = 3;
-        const COLS = 3;
-        let holes = [];              // 存储每个洞的状态 { x, y, width, height, active, type, animationFrame }
-        let activeMole = null;      // 当前活跃的地鼠信息 { row, col, type, endTime }
+        /* ===== 网格参数：3x3 九宫格地鼠洞 ===== */
+        const ROWS = 3;             // 行数
+        const COLS = 3;             // 列数
+        /* holes 数组存储每个洞的状态对象：
+           { row, col, x, y, width, height, active, type, disappearTimer }
+           - x, y, width, height: 洞在 canvas 上的位置和尺寸
+           - active: 是否有地鼠正在显示
+           - type: 当前地鼠类型 ('normal'/'golden'/'bomb')
+           - disappearTimer: 自动消失的 setTimeout ID */
+        let holes = [];
+        /* 当前活跃的地鼠信息（同一时间只有一只地鼠在外面）
+           { row, col, type, endTime } */
+        let activeMole = null;
         
-        let moleSpawnInterval = null;   // 生成地鼠定时器
-        let gameLoopId = null;           // 动画帧
+        let moleSpawnInterval = null;   // 地鼠生成定时器（setInterval ID），控制每 1.35 秒尝试生成一只地鼠
+        let gameLoopId = null;          // 动画帧 ID（requestAnimationFrame 返回值）
         
-        // 地鼠类型
-        const MOLE_NORMAL = 'normal';    // 普通地鼠 +10
-        const MOLE_GOLDEN = 'golden';    // 黄金地鼠 +30
-        const MOLE_BOMB = 'bomb';        // 炸弹 -10
+        /* ===== 地鼠类型常量 =====
+           - 普通地鼠 (NORMAL)：棕色，击中 +10 分，出现概率 70%
+           - 黄金地鼠 (GOLDEN)：金色带皇冠，击中 +30 分，出现概率 20%
+           - 炸弹 (BOMB)：黑色带引线，击中 -10 分，出现概率 10% */
+        const MOLE_NORMAL = 'normal';
+        const MOLE_GOLDEN = 'golden';
+        const MOLE_BOMB = 'bomb';
         
-        // UI 元素
-        const scoreSpan = document.getElementById('scoreValue');
-        const timeSpan = document.getElementById('timeValue');
-        const statusMsgSpan = document.getElementById('gameStatusMsg');
-        const restartBtn = document.getElementById('restartBtn');
+        /* ===== DOM UI 元素引用 ===== */
+        const scoreSpan = document.getElementById('scoreValue');    // 得分数字显示
+        const timeSpan = document.getElementById('timeValue');      // 剩余时间显示
+        const statusMsgSpan = document.getElementById('gameStatusMsg'); // 状态消息文本
+        const restartBtn = document.getElementById('restartBtn');    // 重新开始按钮
         
-        // 动画效果相关
-        let particleEffects = [];   // 打击特效 { x, y, frames, type }
+        /* ===== 粒子特效数组 =====
+           每次击中地鼠时会添加一个粒子效果对象：
+           { x, y, frames(剩余帧数), color(颜色), size(初始半径) }
+           粒子会在 12 帧内逐渐缩小并淡出 */
+        let particleEffects = [];
         
-        // ---------- 初始化洞的位置 (基于canvas 550x550) ----------
+        /**
+         * 初始化 3x3 九宫格地鼠洞的位置
+         * 基于 550x550 的画布尺寸，四周留出边距，将画布均分为 3x3 格子
+         * 每个格子的中心即为地鼠洞的位置
+         */
         function initHoles() {
-            const marginX = 40;
-            const marginY = 70;
-            const holeWidth = (canvas.width - marginX * 2) / COLS;
-            const holeHeight = (canvas.height - marginY * 2) / ROWS;
+            const marginX = 40;   // 水平边距（像素）
+            const marginY = 70;   // 垂直边距（像素），上方留更多空间给草地装饰
+            const holeWidth = (canvas.width - marginX * 2) / COLS;   // 每个格子的宽度
+            const holeHeight = (canvas.height - marginY * 2) / ROWS; // 每个格子的高度
             holes = [];
+            /* 双重循环遍历 3 行 3 列，为每个洞计算位置并存入 holes 数组 */
             for(let row = 0; row < ROWS; row++) {
                 for(let col = 0; col < COLS; col++) {
                     holes.push({
-                        row: row,
-                        col: col,
-                        x: marginX + col * holeWidth,
-                        y: marginY + row * holeHeight,
-                        width: holeWidth,
-                        height: holeHeight,
-                        active: false,
-                        type: null
+                        row: row,           // 行号（0-2）
+                        col: col,           // 列号（0-2）
+                        x: marginX + col * holeWidth,     // 洞区域左上角 X 坐标
+                        y: marginY + row * holeHeight,    // 洞区域左上角 Y 坐标
+                        width: holeWidth,    // 洞区域宽度
+                        height: holeHeight,  // 洞区域高度
+                        active: false,       // 是否有地鼠正在显示
+                        type: null           // 地鼠类型（null 表示无地鼠）
                     });
                 }
             }
         }
         
-        // 更新UI分数/时间
+        /**
+         * 同步更新页面上显示的分数和剩余时间
+         * 每次得分变化或倒计时减少时调用
+         */
         function updateUI() {
             scoreSpan.innerText = score;
-            timeSpan.innerText = Math.floor(timeLeft);
+            timeSpan.innerText = Math.floor(timeLeft);  // 向下取整显示整数秒
         }
         
-        // 游戏结束逻辑
+        /**
+         * 游戏结束处理
+         * - 停止所有定时器（倒计时和地鼠生成器）
+         * - 清除当前活跃的地鼠
+         * - 更新状态消息提示玩家重新开始
+         * - 立即重绘画布显示 GAME OVER 遮罩层
+         */
         function gameOver() {
-            if(!gameActive) return;
-            gameActive = false;
-            if(timerInterval) clearInterval(timerInterval);
-            if(moleSpawnInterval) clearInterval(moleSpawnInterval);
+            if(!gameActive) return;   // 防止重复调用
+            gameActive = false;        // 标记游戏结束，阻止后续操作
+            if(timerInterval) clearInterval(timerInterval);     // 停止倒计时
+            if(moleSpawnInterval) clearInterval(moleSpawnInterval); // 停止地鼠生成
             timerInterval = null;
             moleSpawnInterval = null;
-            // 清除任何活跃地鼠
+            /* 清除当前活跃的地鼠：将对应洞的 active 置为 false */
             if(activeMole) {
                 let idx = activeMole.row * COLS + activeMole.col;
                 if(holes[idx]) holes[idx].active = false;
                 activeMole = null;
             }
+            /* 更新状态栏提示游戏结束 */
             statusMsgSpan.innerText = '💀 游戏结束！点击「重新开局」继续挑战 💀';
             statusMsgSpan.style.color = '#ffae70';
-            draw(); // 立即重绘结束画面
+            draw();   // 立即重绘，显示半透明 GAME OVER 遮罩层
         }
         
-        // 倒计时启动
+        /**
+         * 启动 60 秒倒计时
+         * 每秒执行一次，减少 timeLeft 并更新 UI
+         * 当 timeLeft 降到 0 时触发 gameOver()
+         */
         function startTimer() {
-            if(timerInterval) clearInterval(timerInterval);
+            if(timerInterval) clearInterval(timerInterval);  // 先清除旧定时器，防止重复
             timerInterval = setInterval(() => {
-                if(!gameActive) return;
+                if(!gameActive) return;      // 游戏已结束则忽略
                 if(timeLeft <= 1) {
-                    timeLeft = 0;
-                    updateUI();
-                    gameOver();
+                    timeLeft = 0;            // 时间归零
+                    updateUI();              // 最后一次更新 UI 显示 0
+                    gameOver();              // 触发游戏结束
                 } else {
-                    timeLeft--;
-                    updateUI();
+                    timeLeft--;              // 剩余时间减 1 秒
+                    updateUI();              // 刷新页面时间显示
                 }
-            }, 1000);
+            }, 1000);  // 每 1000 毫秒（1 秒）执行一次
         }
         
-        // 生成随机地鼠 (自动出现)
+        /**
+         * 随机生成一只地鼠
+         * 由 moleSpawnInterval 定时器每 1.35 秒调用一次
+         *
+         * 核心逻辑：
+         * 1. 如果游戏未开始或已有地鼠在外面，则跳过（经典模式：同时最多一只）
+         * 2. 随机选择 9 个洞中的一个
+         * 3. 按概率决定地鼠类型：普通 70%、黄金 20%、炸弹 10%
+         * 4. 激活地鼠并在 1.25 秒后自动消失（如果玩家未击中）
+         */
         function spawnRandomMole() {
             if(!gameActive) return;
-            // 如果已经有地鼠在外面，不再生成新的（保证同时只有一个地鼠，经典模式）
+            /* 保证同时只有一只地鼠在外面（经典打地鼠规则） */
             if(activeMole !== null) return;
-            
-            // 随机选择一个洞 (0-8)
+
+            /* 第一步：随机选择一个洞（0 ~ 8，对应九宫格） */
             const totalHoles = holes.length;
             let randomIndex = Math.floor(Math.random() * totalHoles);
             let selectedHole = holes[randomIndex];
-            
-            // 决定地鼠类型 (概率: 普通70% 黄金20% 炸弹10%)
+
+            /* 第二步：按概率决定地鼠类型
+               randType < 0.2  -> 黄金地鼠 (20%)
+               randType < 0.3  -> 炸弹     (10%)
+               其余             -> 普通地鼠 (70%) */
             let randType = Math.random();
             let moleType = MOLE_NORMAL;
             if(randType < 0.2) {
-                moleType = MOLE_GOLDEN;
+                moleType = MOLE_GOLDEN;    // 20% 概率出现黄金地鼠
             } else if(randType < 0.3) {
-                moleType = MOLE_BOMB;
+                moleType = MOLE_BOMB;      // 10% 概率出现炸弹
             } else {
-                moleType = MOLE_NORMAL;
+                moleType = MOLE_NORMAL;    // 70% 概率出现普通地鼠
             }
-            
-            // 激活地鼠
+
+            /* 第三步：激活地鼠，设置类型和存活时间 */
             selectedHole.active = true;
             selectedHole.type = moleType;
             activeMole = {
                 row: selectedHole.row,
                 col: selectedHole.col,
                 type: moleType,
-                endTime: Date.now() + 1200   // 持续1.2秒自动消失
+                endTime: Date.now() + 1200   // 地鼠存活 1.2 秒（1200 毫秒）
             };
-            
-            // 设置自动消失定时器 (如果未被打中)
+
+            /* 第四步：设置自动消失定时器
+               1.25 秒后如果地鼠未被击中，则自动躲回洞里（不扣分） */
             let disappearTimeout = setTimeout(() => {
                 if(gameActive && activeMole && activeMole.row === selectedHole.row && activeMole.col === selectedHole.col) {
-                    // 地鼠消失，不减分，只是躲回去
-                    selectedHole.active = false;
-                    activeMole = null;
-                    draw();
+                    selectedHole.active = false;   // 地鼠隐藏
+                    activeMole = null;              // 清除活跃地鼠引用
+                    draw();                         // 重绘画布
                 }
             }, 1250);
-            // 存储timeout便于清理？不用太复杂，消失后activeMole置空即可
-            selectedHole.disappearTimer = disappearTimeout;
+            selectedHole.disappearTimer = disappearTimeout;  // 保存定时器 ID，便于击中时取消
         }
         
-        // 打击地鼠 (由canvas点击调用)
+        /**
+         * 打击地鼠处理函数
+         * 由 handleCanvasClick 在检测到点击某个洞时调用
+         *
+         * @param {number} row - 被点击洞的行号 (0-2)
+         * @param {number} col - 被点击洞的列号 (0-2)
+         * @returns {boolean} 是否成功击中地鼠
+         *
+         * 流程：
+         * 1. 检查被点击的洞是否有活跃地鼠且与 activeMole 匹配
+         * 2. 根据地鼠类型计算得分（普通+10，黄金+30，炸弹-10）
+         * 3. 分数最低为 0（不会变成负数）
+         * 4. 在击中位置添加粒子爆炸特效
+         * 5. 取消地鼠的自动消失定时器，立即隐藏地鼠
+         * 6. 短暂显示击中消息后恢复默认提示
+         * 7. 如果打空（洞里没有地鼠），显示"打空了"提示
+         */
         function hitMole(row, col) {
-            if(!gameActive) return false;
-            // 检查这个洞是否有活跃地鼠且匹配当前activeMole
+            if(!gameActive) return false;   // 游戏结束时禁止操作
+
+            /* 检查被点击的洞是否有活跃地鼠 */
             if(activeMole && activeMole.row === row && activeMole.col === col) {
-                const holeIndex = row * COLS + col;
+                const holeIndex = row * COLS + col;   // 将行列号转为数组索引
                 const hole = holes[holeIndex];
                 if(hole && hole.active) {
                     const moleType = activeMole.type;
-                    let deltaScore = 0;
-                    let effectColor = '';
-                    // 根据类型加减分
+                    let deltaScore = 0;       // 本次得分变化量
+                    let effectColor = '';      // 粒子特效颜色
+
+                    /* 根据地鼠类型计算得分和特效颜色 */
                     if(moleType === MOLE_NORMAL) {
-                        deltaScore = 10;
-                        effectColor = '#ffaa44';
+                        deltaScore = 10;              // 普通地鼠 +10 分
+                        effectColor = '#ffaa44';      // 橙色粒子
                         statusMsgSpan.innerText = '✔️ 打中普通地鼠 +10';
                     } else if(moleType === MOLE_GOLDEN) {
-                        deltaScore = 30;
-                        effectColor = '#ffdd77';
+                        deltaScore = 30;              // 黄金地鼠 +30 分
+                        effectColor = '#ffdd77';      // 金黄色粒子
                         statusMsgSpan.innerText = '🌟 黄金地鼠！+30 🌟';
                     } else if(moleType === MOLE_BOMB) {
-                        deltaScore = -10;
-                        effectColor = '#ff5555';
+                        deltaScore = -10;             // 炸弹 -10 分
+                        effectColor = '#ff5555';      // 红色粒子
                         statusMsgSpan.innerText = '💣 炸弹！扣10分 💣';
                     }
+
+                    /* 更新分数（最低为 0） */
                     score += deltaScore;
                     if(score < 0) score = 0;
-                    updateUI();
-                    
-                    // 添加打击特效
+                    updateUI();   // 刷新页面分数显示
+
+                    /* 在地鼠位置添加打击粒子特效 */
                     const centerX = hole.x + hole.width/2;
                     const centerY = hole.y + hole.height/2;
                     particleEffects.push({ x: centerX, y: centerY, frames: 12, color: effectColor, size: 18 });
-                    
-                    // 清除地鼠
+
+                    /* 清除地鼠：取消自动消失定时器，标记洞为非活跃 */
                     if(hole.disappearTimer) clearTimeout(hole.disappearTimer);
                     hole.active = false;
                     activeMole = null;
-                    draw(); // 立即刷新
-                    
-                    // 短暂显示状态后恢复
+                    draw();   // 立即重绘画布
+
+                    /* 600 毫秒后恢复默认状态提示 */
                     setTimeout(() => {
                         if(gameActive && statusMsgSpan.innerText.includes('地鼠')) {
                             statusMsgSpan.innerText = '🐭 快打地鼠！点击冒头的家伙 🐭';
                             statusMsgSpan.style.color = '#f7ecc7';
                         }
                     }, 600);
-                    return true;
+                    return true;   // 成功击中
                 }
             }
-            // 打空: 敲击无效但有音效感提示
+
+            /* 打空处理：点击了没有地鼠的洞，显示提示信息 */
             if(gameActive) {
                 statusMsgSpan.innerText = '😵 打空了！等它冒头再敲~';
                 setTimeout(() => {
@@ -347,28 +452,42 @@
                     }
                 }, 500);
             }
-            return false;
+            return false;   // 未击中
         }
         
-        // ---------- 绘图模块 (手绘风洞穴 + 可爱地鼠) ----------
+        /**
+         * 主绘图函数 - 渲染整个游戏画面
+         * 由 requestAnimationFrame 持续调用（约 60 帧/秒）
+         *
+         * 绘制顺序（从底到顶）：
+         * 1. 草地渐变背景 + 纹理装饰
+         * 2. 九宫格地鼠洞（椭圆形深色坑 + 边缘草叶）
+         * 3. 活跃的地鼠（根据类型绘制不同外观：普通棕鼠/黄金皇冠鼠/炸弹鼠）
+         * 4. 打击粒子特效（逐渐缩小淡出的彩色圆圈）
+         * 5. 游戏结束遮罩层（半透明黑色 + GAME OVER 文字）
+         */
         function draw() {
-            if(!ctx) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+            if(!ctx) return;   // 安全检查：如果获取不到上下文则退出
+            ctx.clearRect(0, 0, canvas.width, canvas.height);  // 清除整个画布
+
+            /* ===== 第一层：草地渐变背景 ===== */
             // 1. 草地背景 + 田园质感
             const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
             grad.addColorStop(0, '#6f8c4d');
             grad.addColorStop(1, '#4c6a2f');
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+            /* 草地纹理装饰：用伪随机分布的小方块模拟草地颗粒感 */
             // 阴影纹理
             ctx.fillStyle = '#3a5723';
             for(let i=0;i<120;i++) {
                 ctx.fillRect((i*37)%canvas.width, (i*23)%canvas.height, 2, 2);
             }
             
+            /* ===== 第二层：绘制 9 个地鼠洞 ===== */
             // 2. 绘制每个洞穴
             for(let h of holes) {
+                /* 绘制洞坑：两层叠加的椭圆，外层稍大较浅，内层较小较深，营造立体凹陷感 */
                 // 洞坑
                 ctx.shadowBlur = 0;
                 ctx.fillStyle = '#3e2a1f';
@@ -380,19 +499,27 @@
                 ctx.ellipse(h.x + h.width/2, h.y + h.height/2 - 3, h.width*0.34, h.height*0.28, 0, 0, Math.PI*2);
                 ctx.fill();
                 
+                /* 洞穴边缘的装饰草叶：在洞下方画几根绿色细条 */
                 // 洞穴边缘草叶
                 ctx.fillStyle = '#7aa55a';
                 for(let i=0;i<6;i++) {
                     ctx.fillRect(h.x + 5 + i*7, h.y + h.height*0.7, 2, 12);
                 }
                 
+                /* ===== 第三层：绘制活跃的地鼠 =====
+                   检查当前洞是否有活跃地鼠，如果有则根据类型绘制不同外观 */
                 // 如果地鼠激活
                 if(h.active && activeMole && activeMole.row === h.row && activeMole.col === h.col) {
                     const moleType = activeMole.type;
-                    const cx = h.x + h.width/2;
-                    const cy = h.y + h.height/2 - 12;
+                    const cx = h.x + h.width/2;      // 洞中心 X 坐标
+                    const cy = h.y + h.height/2 - 12; // 洞中心 Y 坐标（略偏上，让地鼠露出洞口）
+                    /* 三种地鼠外观不同：
+                       - 普通：棕色身体 + 鼻子 + 眼睛 + 胡须
+                       - 黄金：金色身体 + 皇冠（锯齿形顶部 + 红宝石）
+                       - 炸弹：深灰色身体 + 引线 + 火焰 + 骷髅标志 */
                     // 根据不同地鼠类型绘制
                     if(moleType === MOLE_NORMAL) {
+                        /* 普通地鼠：棕色椭圆身体 + 深棕色鼻子 + 白色眼白黑色瞳孔 + 橙色嘴巴 + 胡须 */
                         // 普通棕色地鼠
                         ctx.fillStyle = '#ad7a4b';
                         ctx.beginPath();
@@ -424,6 +551,7 @@
                         ctx.stroke();
                     } 
                     else if(moleType === MOLE_GOLDEN) {
+                        /* 黄金地鼠：金色身体 + 金黄色鼻子 + 瞳孔 + 头顶锯齿形皇冠 + 红宝石装饰 */
                         // 黄金地鼠 + 皇冠
                         ctx.fillStyle = '#f7c56e';
                         ctx.beginPath();
@@ -456,6 +584,7 @@
                         ctx.fill();
                     } 
                     else if(moleType === MOLE_BOMB) {
+                        /* 炸弹鼠：深灰色身体 + 深色鼻子 + 引线（斜线）+ 红色火焰 + 黄色眼睛 + 骷髅标志 */
                         // 炸弹鼠 (黑色炸弹)
                         ctx.fillStyle = '#3a3a4a';
                         ctx.beginPath();
@@ -487,10 +616,14 @@
                 }
             }
             
+            /* ===== 第四层：绘制打击粒子特效 =====
+               每个粒子是一个逐渐缩小并淡出的彩色圆圈
+               半透明程度随 frames 递减，大小从初始值缩小到 0 */
             // 绘制打击粒子特效
             for(let i=0; i<particleEffects.length; i++) {
                 let p = particleEffects[i];
-                let alpha = p.frames / 12;
+                let alpha = p.frames / 12;   // 透明度：从 1.0 逐渐降到 0
+                /* 将颜色与透明度拼接为带 Alpha 通道的十六进制颜色值（如 #ffaa44cc） */
                 ctx.fillStyle = p.color + Math.floor(alpha*255).toString(16).padStart(2,'0');
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.size * (1 - p.frames/12), 0, Math.PI*2);
@@ -506,6 +639,9 @@
                 }
             }
             
+            /* ===== 第五层：游戏结束遮罩层 =====
+               当 gameActive 为 false 时，在画布上叠加半透明黑色遮罩
+               并绘制 "GAME OVER" 大字和重新开始提示 */
             // 游戏结束时覆盖半透明及文字
             if(!gameActive) {
                 ctx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -525,24 +661,40 @@
             ctx.shadowBlur = 0;
         }
         
+        /**
+         * Canvas 点击事件处理函数
+         * 将页面坐标转换为 Canvas 内部坐标，然后判断点击了哪个洞
+         *
+         * 支持鼠标点击（click）和触摸事件（touchstart）
+         * 坐标转换：页面客户区坐标 -> Canvas 像素坐标（处理 Canvas 缩放情况）
+         */
         // 点击canvas检测命中哪个洞
         function handleCanvasClick(e) {
-            if(!gameActive) return;
+            if(!gameActive) return;   // 游戏结束时忽略点击
+            /* 获取 Canvas 元素在页面中的位置和尺寸 */
             const rect = canvas.getBoundingClientRect();
+            /* 计算缩放比例：Canvas 实际像素尺寸 / 页面显示尺寸
+               用于将页面坐标正确映射到 Canvas 内部坐标 */
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
+            /* 区分触摸事件和鼠标事件，获取点击坐标 */
             let clientX, clientY;
             if(e.touches) {
+                /* 触摸事件：取第一个触摸点的坐标 */
                 clientX = e.touches[0].clientX;
                 clientY = e.touches[0].clientY;
-                e.preventDefault();
+                e.preventDefault();   // 阻止默认触摸行为（如页面滚动）
             } else {
+                /* 鼠标事件：直接取 clientX/Y */
                 clientX = e.clientX;
                 clientY = e.clientY;
             }
+            /* 将页面坐标转换为 Canvas 内部像素坐标 */
             let canvasX = (clientX - rect.left) * scaleX;
             let canvasY = (clientY - rect.top) * scaleY;
             
+            /* 遍历所有 9 个洞，检测点击坐标是否落在某个洞的范围内
+               如果命中则调用 hitMole() 进行打击判定 */
             // 遍历洞检测是否点击在洞范围内
             for(let h of holes) {
                 if(canvasX >= h.x && canvasX <= h.x + h.width && canvasY >= h.y && canvasY <= h.y + h.height) {
@@ -553,29 +705,41 @@
             }
         }
         
+        /**
+         * 重置并重新开始游戏
+         * 完整重置所有游戏状态：分数归零、时间恢复 60 秒、清除所有定时器和特效
+         * 然后重新启动倒计时和地鼠生成器
+         *
+         * 调用时机：页面初始化时、点击"重新开局"按钮时
+         */
         // 重置游戏完整状态
         function resetAndStart() {
             // 停止所有定时器
             if(timerInterval) clearInterval(timerInterval);
             if(moleSpawnInterval) clearInterval(moleSpawnInterval);
             if(activeMole && activeMole.disappearTimer) clearTimeout(activeMole.disappearTimer);
+            /* 重置所有游戏变量为初始值 */
             // 重置变量
-            gameActive = true;
-            score = 0;
-            timeLeft = 60;
-            activeMole = null;
-            particleEffects = [];
+            gameActive = true;         // 标记游戏为进行中
+            score = 0;                 // 分数归零
+            timeLeft = 60;             // 时间恢复 60 秒
+            activeMole = null;         // 清除活跃地鼠引用
+            particleEffects = [];      // 清除所有粒子特效
+            /* 重置所有洞穴状态：取消地鼠消失定时器，清除地鼠类型 */
             // 重置所有洞穴状态
             for(let h of holes) {
-                h.active = false;
-                if(h.disappearTimer) clearTimeout(h.disappearTimer);
-                h.type = null;
+                h.active = false;                              // 隐藏所有地鼠
+                if(h.disappearTimer) clearTimeout(h.disappearTimer); // 取消自动消失定时器
+                h.type = null;                                 // 清除地鼠类型
             }
             updateUI();
             statusMsgSpan.innerText = '🐭 快打地鼠！点击冒头的家伙 🐭';
             statusMsgSpan.style.color = '#f7ecc7';
+            /* 重新启动倒计时和地鼠生成器 */
             // 重新启动倒计时与生成器
-            startTimer();
+            startTimer();   // 启动 60 秒倒计时
+            /* 地鼠生成定时器：每 1.35 秒尝试生成一只新地鼠
+               间隔选择 1350ms 而非整数，避免与其他定时器节奏重合 */
             // 生成地鼠间隔 1.3 ~ 1.6 秒随机
             moleSpawnInterval = setInterval(() => {
                 if(gameActive) {
@@ -586,25 +750,39 @@
             draw();
         }
         
+        /**
+         * 游戏初始化函数（入口点）
+         * 执行顺序：
+         * 1. 计算 3x3 洞的位置（initHoles）
+         * 2. 重置游戏状态并开始第一局（resetAndStart）
+         * 3. 绑定交互事件（鼠标点击 + 触摸 + 重新开始按钮）
+         * 4. 启动 requestAnimationFrame 动画循环，持续重绘画面
+         */
         // 初始化整个游戏
         function init() {
-            initHoles();
-            resetAndStart();   // 开始游戏
-            
+            initHoles();          // 计算九宫格地鼠洞的位置坐标
+            resetAndStart();      // 重置状态并开始游戏
+
+            /* 绑定画布交互事件：同时支持鼠标和触屏设备 */
             // 绑定画布点击 (鼠标 + 触摸)
-            canvas.addEventListener('click', handleCanvasClick);
-            canvas.addEventListener('touchstart', handleCanvasClick, { passive: false });
+            canvas.addEventListener('click', handleCanvasClick);        // 鼠标点击
+            canvas.addEventListener('touchstart', handleCanvasClick, { passive: false }); // 触摸（阻止默认行为）
+            /* 重新开始按钮点击事件 */
             restartBtn.addEventListener('click', () => {
-                resetAndStart();
+                resetAndStart();   // 点击后完全重置并重新开始
             });
+
+            /* 启动动画循环：使用 requestAnimationFrame 持续调用 draw()
+               确保画面流畅更新（通常 60 帧/秒），粒子特效等需要逐帧渲染 */
             // 启动动画帧持续绘制
             function animate() {
-                draw();
-                requestAnimationFrame(animate);
+                draw();                    // 每帧重绘整个画面
+                requestAnimationFrame(animate);  // 请求下一帧回调
             }
-            animate();
+            animate();   // 启动动画循环
         }
         
+        /* 调用 init() 启动游戏，页面加载完成后自动执行 */
         // 启动
         init();
     })();

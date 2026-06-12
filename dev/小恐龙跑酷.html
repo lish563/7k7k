@@ -1,3 +1,16 @@
+<!--
+    ============================================
+    文件: 小恐龙跑酷.html
+    类型: 单文件 HTML5 Canvas 游戏
+    说明: 仿 Chrome 浏览器内置"恐龙跑酷"的无尽跑酷小游戏
+          - 玩家控制一只绿色小恐龙，通过跳跃和下蹲躲避仙人掌与飞行昆虫
+          - 障碍物从右侧不断生成并向左移动，速度随分数逐渐加快
+          - 碰到障碍物则游戏结束，最高分通过 localStorage 持久化保存
+    操作: 空格/上箭头 = 跳跃, 下箭头 = 下蹲
+          移动端: 触摸左半屏跳跃, 右半屏下蹲
+    技术: 纯 HTML + CSS + JavaScript，使用 Canvas 2D API 绘图，无外部依赖
+    ============================================
+-->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -5,11 +18,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>小恐龙跑酷 · 跳跃/下蹲躲避障碍物</title>
     <style>
+        /* ====== 全局重置：禁止文字选中，去除移动端点击高亮 ====== */
         * {
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* ====== 页面背景：深绿色径向渐变，Flex 居中布局 ====== */
         body {
             background: linear-gradient(145deg, #1a472a 0%, #0e2a1a 100%);
             min-height: 100vh;
@@ -21,6 +36,7 @@
             padding: 20px;
         }
 
+        /* ====== 游戏外层容器：圆角卡片 + 深绿底色 + 阴影 ====== */
         .game-wrapper {
             background: #2c3e2b;
             border-radius: 48px;
@@ -28,6 +44,7 @@
             box-shadow: 0 25px 40px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.1);
         }
 
+        /* ====== 游戏画布：浅绿底色 + 圆角 + 双层阴影模拟边框 ====== */
         canvas {
             display: block;
             margin: 0 auto;
@@ -37,6 +54,7 @@
             cursor: pointer;
         }
 
+        /* ====== 信息面板：得分、最高分、重新开始按钮的横向布局栏 ====== */
         .info-panel {
             display: flex;
             justify-content: space-between;
@@ -51,6 +69,7 @@
             flex-wrap: wrap;
         }
 
+        /* ====== 得分卡片：金色数字，深色胶囊背景 ====== */
         .score-card {
             background: #0f1f0a;
             padding: 6px 20px;
@@ -62,6 +81,7 @@
             box-shadow: inset 0 0 6px #3e6b2f, 0 3px 6px rgba(0,0,0,0.4);
         }
 
+        /* ====== 最高分卡片：蓝色数字，深绿背景 ====== */
         .best-card {
             background: #1a2a18;
             padding: 6px 18px;
@@ -71,6 +91,7 @@
             font-size: 18px;
         }
 
+        /* ====== 按钮样式：橙色胶囊按钮，3D 按压效果 ====== */
         button {
             background: #f5a623;
             border: none;
@@ -86,11 +107,13 @@
             transform: translateY(-2px);
         }
 
+        /* 按钮按下状态：下沉位移 + 减小阴影模拟按压 */
         button:active {
             transform: translateY(3px);
             box-shadow: 0 1px 0 #9b5e1a;
         }
 
+        /* ====== 游戏状态提示栏：半透明黑色背景，绿色文字 ====== */
         .status {
             background: #000000aa;
             padding: 5px 18px;
@@ -100,6 +123,7 @@
             color: #e4ffc7;
         }
 
+        /* ====== 操作提示标签：浅绿色胶囊样式 ====== */
         .tips {
             text-align: center;
             margin-top: 16px;
@@ -115,96 +139,122 @@
     </style>
 </head>
 <body>
+<!-- 页面整体结构：最外层 div 用于 body flex 居中 -->
 <div>
+    <!-- 游戏主容器：包含画布、信息面板、状态栏 -->
     <div class="game-wrapper">
+        <!-- 游戏画布：宽 800px 高 400px，所有游戏内容在此绘制 -->
         <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <!-- 信息面板：显示当前得分、历史最高分、重新开始按钮 -->
         <div class="info-panel">
+            <!-- 当前得分显示 -->
             <div class="score-card">
                 🏃 得分 <span id="scoreValue">0</span>
             </div>
+            <!-- 历史最高分显示（数据来自 localStorage） -->
             <div class="best-card">
                 🏆 最高分 <span id="bestScoreValue">0</span>
             </div>
+            <!-- 重新开始按钮 -->
             <button id="restartGameBtn">🦖 重新奔跑</button>
         </div>
+        <!-- 底部信息栏：左侧为游戏状态消息，右侧为操作技巧提示 -->
         <div style="display: flex; justify-content: space-between; align-items: center;">
+            <!-- 游戏状态消息：显示当前操作提示或游戏结束信息 -->
             <div class="status" id="gameStateMsg">⬆️ 按 空格 / 上箭头 跳跃 | ⬇️ 下箭头 下蹲</div>
+            <!-- 操作技巧提示 -->
             <div class="tips">💡 蹲下时按上可站立 | 空中无法蹲下</div>
         </div>
     </div>
 </div>
 
 <script>
+    /**
+     * 整个游戏逻辑使用 IIFE（立即执行函数表达式）包裹，
+     * 避免污染全局作用域。
+     */
     (function(){
-        // ---------- 小恐龙跑酷 · 核心模块 ----------
+        // ===================== 获取 Canvas 和 2D 绘图上下文 =====================
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
-        // 游戏状态
-        let gameRunning = true;
-        let score = 0;
+
+        // ===================== 游戏状态变量 =====================
+        let gameRunning = true;   // 游戏是否正在运行（false 表示游戏结束）
+        let score = 0;            // 当前得分
+        // 从 localStorage 读取历史最高分，若不存在则为 0
         let bestScore = localStorage.getItem('dinoBestScore') ? parseInt(localStorage.getItem('dinoBestScore')) : 0;
-        let frameCounter = 0;       // 用于生成障碍物计时
-        let gameSpeed = 5;          // 基础滚动速度 (每帧)
+        let frameCounter = 0;       // 全局帧计数器，用于控制障碍物生成间隔和草地动画
+        let gameSpeed = 5;          // 基础滚动速度（像素/帧），会随得分动态增加
         
-        // 恐龙物理属性
-        const DINO_WIDTH = 32;
-        const DINO_HEIGHT_STAND = 42;
-        const DINO_HEIGHT_DUCK = 24;
-        let dinoX = 70;
-        let dinoY = canvas.height - 60 - DINO_HEIGHT_STAND;  // 地面高度
-        let dinoHeight = DINO_HEIGHT_STAND;
-        let dinoYOffset = 0;        // 跳跃偏移量
-        let isJumping = false;
-        let isDucking = false;
-        let jumpVelocity = 0;
-        const GRAVITY = 0.8;
-        const JUMP_POWER = -11;
+        // ===================== 恐龙物理属性常量与状态 =====================
+        const DINO_WIDTH = 32;             // 恐龙宽度（像素）
+        const DINO_HEIGHT_STAND = 42;      // 恐龙站立时高度
+        const DINO_HEIGHT_DUCK = 24;       // 恐龙下蹲时高度（更扁平）
+        let dinoX = 70;                    // 恐龙水平位置（固定不动，障碍物向左移动）
+        let dinoY = canvas.height - 60 - DINO_HEIGHT_STAND;  // 恐龙垂直位置（初始站在地面上）
+        let dinoHeight = DINO_HEIGHT_STAND; // 当前恐龙高度（站立或下蹲）
+        let dinoYOffset = 0;               // 跳跃时的垂直偏移量（从起跳点算起）
+        let isJumping = false;             // 是否正在跳跃中
+        let isDucking = false;             // 是否正在下蹲中
+        let jumpVelocity = 0;              // 跳跃时的垂直速度（正值向下，负值向上）
+        const GRAVITY = 0.8;               // 重力加速度（每帧速度增量）
+        const JUMP_POWER = -11;            // 跳跃初速度（负值 = 向上）
+
+        // ===================== 地面基准线 =====================
+        const groundY = canvas.height - 50; // 地面 Y 坐标（画布底部上方 50px）
         
-        // 地面基准线
-        const groundY = canvas.height - 50;
-        
-        // 障碍物数组
-        let obstacles = [];
-        
-        // 障碍物类型
+        // ===================== 障碍物系统 =====================
+        let obstacles = [];  // 障碍物数组，存储所有当前屏幕上的障碍物对象
+
+        // 障碍物类型枚举
         const OBSTACLE_TYPE = {
-            CACTUS: 'cactus',      // 地面仙人掌
-            FLYING_BUG: 'flying'   // 飞行昆虫 (空中障碍)
+            CACTUS: 'cactus',      // 地面仙人掌（需要跳跃躲避）
+            FLYING_BUG: 'flying'   // 飞行昆虫（空中障碍，需要下蹲躲避）
         };
-        
-        // 生成间隔控制
-        let framesSinceLastObstacle = 0;
-        const MIN_GAP_FRAMES = 70;
-        const MAX_GAP_FRAMES = 110;
-        let nextObstacleGap = 85;
-        
-        // 动画帧ID
+
+        // ===================== 障碍物生成间隔控制 =====================
+        let framesSinceLastObstacle = 0;   // 距离上一个障碍物生成后经过的帧数
+        const MIN_GAP_FRAMES = 70;         // 最小生成间隔（帧数）
+        const MAX_GAP_FRAMES = 110;        // 最大生成间隔（帧数）
+        let nextObstacleGap = 85;          // 下次生成障碍物的间隔（随机值）
+
+        // ===================== 动画帧 ID（用于 requestAnimationFrame） =====================
         let animationId = null;
+
+        // ===================== DOM UI 元素引用 =====================
+        const scoreSpan = document.getElementById('scoreValue');       // 得分显示元素
+        const bestScoreSpan = document.getElementById('bestScoreValue'); // 最高分显示元素
+        const gameStateSpan = document.getElementById('gameStateMsg');  // 游戏状态消息元素
+        const restartBtn = document.getElementById('restartGameBtn');   // 重新开始按钮
         
-        // UI 元素
-        const scoreSpan = document.getElementById('scoreValue');
-        const bestScoreSpan = document.getElementById('bestScoreValue');
-        const gameStateSpan = document.getElementById('gameStateMsg');
-        const restartBtn = document.getElementById('restartGameBtn');
-        
-        // 辅助函数
+        // ===================== 辅助函数 =====================
+
+        /**
+         * 更新界面上的得分和最高分显示
+         * 取整后显示，避免小数闪烁
+         */
         function updateUI() {
             scoreSpan.innerText = Math.floor(score);
             bestScoreSpan.innerText = bestScore;
         }
-        
-        // 保存最高分
+
+        /**
+         * 检查并保存最高分
+         * 如果当前得分超过历史最高分，则更新并写入 localStorage 持久化
+         */
         function updateBestScore() {
             let intScore = Math.floor(score);
             if(intScore > bestScore) {
                 bestScore = intScore;
-                localStorage.setItem('dinoBestScore', bestScore);
+                localStorage.setItem('dinoBestScore', bestScore); // 持久化到浏览器本地存储
                 bestScoreSpan.innerText = bestScore;
             }
         }
         
-        // 重置游戏
+        /**
+         * 重置游戏所有状态到初始值
+         * 调用时机：游戏初始化时、点击重新开始按钮时
+         */
         function resetGame() {
             gameRunning = true;
             score = 0;
@@ -224,14 +274,21 @@
             gameStateSpan.style.color = '#e4ffc7';
         }
         
-        // 随机间隔
+        /**
+         * 生成一个随机的障碍物生成间隔（帧数）
+         * 返回值在 [MIN_GAP_FRAMES, MAX_GAP_FRAMES) 之间
+         */
         function randomGap() {
             return Math.floor(Math.random() * (MAX_GAP_FRAMES - MIN_GAP_FRAMES) + MIN_GAP_FRAMES);
         }
-        
-        // 生成新障碍物 (地面或空中)
+
+        /**
+         * 生成新障碍物并添加到 obstacles 数组
+         * 障碍物类型随机决定：70% 概率生成地面仙人掌，30% 概率生成飞行昆虫
+         * 仙人掌 = 需要跳跃躲避，飞行昆虫 = 需要下蹲躲避
+         */
         function spawnObstacle() {
-            // 决定障碍类型: 70% 地面仙人掌, 30% 飞行昆虫
+            // 随机决定障碍类型：30% 概率为空中飞行昆虫，70% 为地面仙人掌
             const isFlying = Math.random() < 0.3;
             let obsY, width, height;
             if(isFlying) {
@@ -256,10 +313,14 @@
             });
         }
         
-        // 跳跃逻辑
+        /**
+         * 跳跃逻辑
+         * 如果当前处于下蹲状态，会先取消下蹲再执行跳跃
+         * 跳跃通过设置初速度 JUMP_POWER 实现，之后由重力逐步减速
+         */
         function jump() {
-            if(!gameRunning) return;
-            // 如果在下蹲状态，先站起来再跳 (但为了手感: 下蹲时按跳跃，先取消下蹲再跳)
+            if(!gameRunning) return;         // 游戏已结束，忽略跳跃
+            // 如果在下蹲状态，先站起来再跳（取消下蹲，恢复站立高度）
             if(isDucking) {
                 isDucking = false;
                 dinoHeight = DINO_HEIGHT_STAND;
@@ -276,10 +337,14 @@
             }
         }
         
-        // 下蹲 / 站立
+        /**
+         * 下蹲 / 站立 切换
+         * @param {boolean} duckActive - true 表示按下蹲键（开始下蹲），false 表示松开（站立）
+         * 空中不能下蹲，下蹲时恐龙高度降低，更容易避开飞行昆虫
+         */
         function duck(duckActive) {
             if(!gameRunning) return;
-            if(isJumping) return;  // 空中不能下蹲
+            if(isJumping) return;  // 空中不允许下蹲
             if(duckActive && !isDucking) {
                 isDucking = true;
                 dinoHeight = DINO_HEIGHT_DUCK;
@@ -292,11 +357,20 @@
             }
         }
         
-        // 更新游戏逻辑: 移动障碍物, 碰撞, 分数
+        /**
+         * 核心游戏逻辑更新函数（每帧调用一次）
+         * 负责以下五项任务：
+         *   1. 更新恐龙跳跃物理（重力、落地检测）
+         *   2. 移动障碍物、移除出屏障碍物、计算越过得分
+         *   3. 碰撞检测（矩形 AABB 重叠判定）
+         *   4. 动态生成新障碍物
+         *   5. 时间自然加分 + 动态难度调整（速度递增、间隔缩短）
+         */
         function updateGame() {
             if(!gameRunning) return;
-            
-            // 1. 恐龙跳跃物理
+
+            // --- 第1步：恐龙跳跃物理模拟 ---
+            // 使用 dinoYOffset 记录相对于地面的跳跃偏移，重力每帧累加速度
             if(isJumping) {
                 dinoYOffset += jumpVelocity;
                 jumpVelocity += GRAVITY;
@@ -313,7 +387,7 @@
                 dinoY = groundY - dinoHeight;
             }
             
-            // 2. 障碍物移动 & 移除 & 得分
+            // --- 第2步：障碍物向左移动、越界移除、越过得分 ---
             for(let i=0; i<obstacles.length; i++) {
                 let obs = obstacles[i];
                 obs.x -= gameSpeed;
@@ -329,14 +403,15 @@
                     score += 10;
                     updateUI();
                     updateBestScore();
-                    // 动态增加难度: 速度逐渐上升
+                    // 动态增加难度：每越过一个障碍物，游戏速度略微增加（上限 11）
                     if(gameSpeed < 11) {
                         gameSpeed += 0.008;
                     }
                 }
             }
             
-            // 3. 碰撞检测 (矩形重叠)
+            // --- 第3步：碰撞检测（AABB 矩形重叠判定） ---
+            // 计算恐龙的碰撞矩形边界
             const dinoLeft = dinoX;
             const dinoRight = dinoX + DINO_WIDTH;
             const dinoTop = dinoY;
@@ -358,26 +433,32 @@
                 }
             }
             
-            // 4. 动态生成障碍物
+            // --- 第4步：根据间隔计时动态生成新障碍物 ---
             framesSinceLastObstacle++;
             if(framesSinceLastObstacle >= nextObstacleGap) {
                 spawnObstacle();
                 framesSinceLastObstacle = 0;
                 nextObstacleGap = randomGap();
-                // 难度提升: 间隔略微缩短 (最快不低于45帧)
+                // 难度提升：随着得分增加，障碍物生成间隔逐渐缩短（最快不低于45帧）
+                // 每500分缩短1帧，使游戏节奏逐渐加快
                 let dynamicGap = Math.max(45, nextObstacleGap - Math.floor(score / 500));
                 nextObstacleGap = dynamicGap;
             }
             
-            // 5. 分数自然增加(时间分)
+            // --- 第5步：时间自然加分（每帧 +0.2 分，与越过得分叠加） ---
             score += 0.2;
             updateUI();
             updateBestScore();
         }
         
-        // ---------- 绘图：细腻风格 ----------
+        // ===================== Canvas 绘图函数 =====================
+
+        /**
+         * 绘制地面：双层矩形模拟地面厚度 + 随机草地装饰条
+         * 草地装饰条通过 frameCounter 产生水平滚动效果
+         */
         function drawGround() {
-            // 地面
+            // 地面主体：浅绿色条带
             ctx.fillStyle = '#8faa5e';
             ctx.fillRect(0, groundY, canvas.width, 4);
             ctx.fillStyle = '#6b8c3a';
@@ -389,12 +470,18 @@
             }
         }
         
+        /**
+         * 绘制小恐龙角色
+         * 包含：身体主体、腹部高光、棘背、眼睛（带眨眼动画）、
+         *       眉毛（跳跃时上扬）、下蹲趴地痕迹、尾巴
+         * 所有绘制基于 Canvas 2D API 的路径绘制和圆角矩形
+         */
         function drawDino() {
-            let x = dinoX;
-            let y = dinoY;
+            let x = dinoX;     // 恐龙左上角 X
+            let y = dinoY;     // 恐龙左上角 Y
             let w = DINO_WIDTH;
             let h = dinoHeight;
-            // 动态眨眼效果 (通过帧计数器)
+            // 动态眨眼效果：每 400ms 一个周期，其中 3/4 时间睁眼，1/4 闭眼
             let eyeOpen = (Math.floor(Date.now() / 400) % 4) !== 0;
             
             // 身体主色
@@ -457,7 +544,11 @@
             ctx.fill();
         }
         
-        // 绘制地面障碍物(仙人掌) + 飞行昆虫
+        /**
+         * 绘制所有障碍物
+         * 仙人掌：绿色圆角矩形 + 顶部枝条 + 身上小刺
+         * 飞行昆虫：椭圆身体 + 斑点 + 半透明翅膀（带摆动动画）
+         */
         function drawObstacles() {
             for(let obs of obstacles) {
                 if(obs.type === OBSTACLE_TYPE.CACTUS) {
@@ -502,7 +593,10 @@
             }
         }
         
-        // 绘制云朵和风景
+        /**
+         * 绘制背景：天空渐变 + 漂浮云朵
+         * 云朵通过 frameCounter 实现从右向左的缓慢漂移动画
+         */
         function drawBackground() {
             // 天空渐变
             const grad = ctx.createLinearGradient(0, 0, 0, groundY);
@@ -524,7 +618,11 @@
             ctx.fill();
         }
         
-        // 主绘图函数
+        /**
+         * 主绘图函数（每帧调用）
+         * 绘制顺序：清屏 → 背景 → 地面 → 障碍物 → 恐龙 → 分数 → 游戏结束遮罩
+         * 绘制顺序决定了图层叠放关系（后绘制的在上层）
+         */
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawBackground();
@@ -538,6 +636,7 @@
             ctx.shadowBlur = 0;
             ctx.fillText(`${Math.floor(score)}`, canvas.width-100, 50);
             
+            // 游戏结束时绘制半透明黑色遮罩 + "GAME OVER" 文字
             if(!gameRunning) {
                 ctx.fillStyle = 'rgba(0,0,0,0.7)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -550,8 +649,13 @@
             }
         }
         
-        // 动画循环 + 更新
-        let lastTimestamp = 0;
+        // ===================== 游戏主循环 =====================
+        let lastTimestamp = 0;  // 预留的时间戳变量（当前未使用）
+        /**
+         * 游戏主循环：通过 requestAnimationFrame 实现 ~60fps 的逐帧更新
+         * 每帧先更新游戏逻辑，再重绘整个画面
+         * 即使游戏结束也会继续调用 draw() 以显示结束遮罩
+         */
         function gameLoop() {
             if(gameRunning) {
                 updateGame();
@@ -561,10 +665,16 @@
             requestAnimationFrame(gameLoop);
         }
         
-        // ---------- 键盘控制 ----------
+        // ===================== 输入控制：键盘 =====================
+        /**
+         * 键盘按下事件处理
+         * 空格/上箭头 → 跳跃
+         * 下箭头 → 下蹲
+         * 同时阻止这些按键的默认行为（防止页面滚动）
+         */
         function handleKeyDown(e) {
             const key = e.key;
-            // 阻止空格/上下箭头滚动页面
+            // 阻止空格/上下箭头的默认行为（页面滚动）
             if(key === ' ' || key === 'Space' || key === 'ArrowUp' || key === 'ArrowDown') {
                 e.preventDefault();
             }
@@ -576,14 +686,24 @@
             }
         }
         
+        /**
+         * 键盘松开事件处理
+         * 松开下箭头 → 取消下蹲，恢复站立状态
+         */
         function handleKeyUp(e) {
             const key = e.key;
             if(key === 'ArrowDown') {
-                duck(false);
+                duck(false);  // 松开下蹲键，站立
             }
         }
         
-        // 触摸事件支持移动端（模拟下蹲/跳跃简单: 点击左半区跳跃，右半区下蹲）
+        // ===================== 输入控制：触摸（移动端） =====================
+        /**
+         * 触摸事件处理（移动端适配）
+         * 触摸画布左半区 → 跳跃
+         * 触摸画布右半区 → 短按下蹲（300ms 后自动站立）
+         * 这种设计模拟了原版 Chrome 恐龙游戏的简单触控操作
+         */
         function handleTouch(e) {
             if(!gameRunning) return;
             e.preventDefault();
@@ -598,6 +718,10 @@
             }
         }
         
+        /**
+         * 注册所有事件监听器：键盘、触摸、鼠标
+         * 鼠标事件用于 PC 端辅助测试，逻辑与触摸事件一致
+         */
         function initEventListeners() {
             window.addEventListener('keydown', handleKeyDown);
             window.addEventListener('keyup', handleKeyUp);
@@ -615,25 +739,40 @@
             });
         }
         
-        // 重置逻辑 + 启动
+        // ===================== 重新开始与初始化 =====================
+
+        /** 重新开始游戏（调用 resetGame 重置状态） */
         function restartGame() {
             resetGame();
         }
-        
+
+        // 为重新开始按钮绑定点击事件
         restartBtn.addEventListener('click', () => {
             restartGame();
         });
-        
-        // 初始化
+
+        /**
+         * 游戏初始化入口
+         * 1. 重置所有游戏状态
+         * 2. 注册键盘/触摸/鼠标事件监听
+         * 3. 启动游戏主循环（requestAnimationFrame）
+         */
         function init() {
             resetGame();
             initEventListeners();
             gameLoop();
         }
-        
+
+        // 启动游戏
         init();
         
-        // 辅助roundRect
+        // ===================== roundRect Polyfill =====================
+        /**
+         * CanvasRenderingContext2D.roundRect() 兼容性补丁
+         * roundRect 是较新的 Canvas API，部分旧浏览器不支持
+         * 此 polyfill 通过 moveTo + lineTo + quadraticCurveTo 手动绘制圆角矩形路径
+         * 绘制顺序：上边 → 右上角 → 右边 → 右下角 → 下边 → 左下角 → 左边 → 左上角（闭合）
+         */
         if (!CanvasRenderingContext2D.prototype.roundRect) {
             CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
                 if (w < 2 * r) r = w / 2;

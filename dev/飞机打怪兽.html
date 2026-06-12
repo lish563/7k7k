@@ -1,3 +1,19 @@
+<!--
+    ============================================================
+    文件：飞机打怪兽.html
+    项目：星际战机 · 打怪兽 (Space Shooter)
+    说明：
+        一款基于 Canvas 的鼠标/触屏操控太空射击游戏。
+        - 玩家通过鼠标移动或手指滑动控制战机位置，战机自动开火
+        - 怪兽从屏幕顶部向下移动，共有 3 种类型：
+            红色 (+10分, 1HP)、紫色 (+20分, 1HP)、蓝色 (+30分, 2HP)
+        - 玩家拥有 3 点生命值(心形图标显示)，被怪兽碰到后扣 1 HP
+        - 受伤后获得约 0.5 秒无敌时间（闪烁提示）
+        - 随着分数提高，怪兽生成速度加快、移动速度提升（动态难度）
+        - 游戏结束后点击"重新起飞"按钮重新开始
+    技术栈：HTML5 Canvas + 原生 JavaScript，单文件，无外部依赖
+    ============================================================
+-->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -5,11 +21,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>星际战机 · 打怪兽</title>
     <style>
+        /* ===== 全局重置：禁止文本选中、去除移动端点击高亮 ===== */
         * {
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* ===== 页面主体：深色太空渐变背景，flex 居中布局 ===== */
         body {
             background: linear-gradient(145deg, #030b1a 0%, #07152a 100%);
             min-height: 100vh;
@@ -21,6 +39,7 @@
             padding: 20px;
         }
 
+        /* ===== 游戏外层容器：圆角卡片风格，包含画布+信息栏 ===== */
         .game-wrapper {
             background: #0a1428;
             border-radius: 48px;
@@ -28,15 +47,17 @@
             box-shadow: 0 25px 40px rgba(0, 0, 0, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.1);
         }
 
+        /* ===== Canvas 画布：隐藏默认光标(由游戏中绘制准星替代) ===== */
         canvas {
             display: block;
             margin: 0 auto;
             border-radius: 24px;
             box-shadow: 0 0 0 5px #2a3f6e, 0 12px 28px black;
-            cursor: none;
+            cursor: none;               /* 隐藏系统光标，游戏中自行绘制准星光晕 */
             background-color: #010a18;
         }
 
+        /* ===== 信息面板：横排展示得分、生命值、重启按钮 ===== */
         .info-panel {
             display: flex;
             justify-content: space-between;
@@ -44,13 +65,14 @@
             margin-top: 18px;
             margin-bottom: 10px;
             background: #0d1a2fcc;
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);     /* 毛玻璃效果 */
             padding: 8px 24px;
             border-radius: 60px;
             gap: 15px;
             flex-wrap: wrap;
         }
 
+        /* ===== 得分卡片：金色高亮大字号，暗色底板 ===== */
         .score-card {
             background: #010a1a;
             padding: 6px 20px;
@@ -62,6 +84,7 @@
             box-shadow: inset 0 0 6px #2e4a7a, 0 3px 6px rgba(0,0,0,0.4);
         }
 
+        /* ===== 生命值卡片：橙红色调，显示"战机耐久"文字 ===== */
         .hp-card {
             background: #1a1f2e;
             padding: 6px 18px;
@@ -74,11 +97,13 @@
             gap: 8px;
         }
 
+        /* ===== 心形图标区域：用 emoji 心形展示剩余血量 ===== */
         .hp-heart {
             font-size: 22px;
             letter-spacing: 2px;
         }
 
+        /* ===== 按钮（重新起飞）：橙色立体按钮，按下时下沉效果 ===== */
         button {
             background: #f5a623;
             border: none;
@@ -90,15 +115,16 @@
             color: #1f2a1e;
             cursor: pointer;
             transition: all 0.1s linear;
-            box-shadow: 0 5px 0 #9b5e1a;
+            box-shadow: 0 5px 0 #9b5e1a;    /* 底部阴影模拟立体按键 */
             transform: translateY(-2px);
         }
 
         button:active {
-            transform: translateY(3px);
+            transform: translateY(3px);     /* 按下时下移，模拟物理按键 */
             box-shadow: 0 1px 0 #9b5e1a;
         }
 
+        /* ===== 状态消息栏：显示当前游戏状态（如受伤提示、开始提示）===== */
         .status {
             background: #000000aa;
             padding: 5px 18px;
@@ -108,6 +134,7 @@
             color: #b8e2ff;
         }
 
+        /* ===== 操作提示栏：显示操控方式说明 ===== */
         .tips {
             text-align: center;
             margin-top: 16px;
@@ -122,10 +149,15 @@
         }
     </style>
 </head>
+<!-- ===== 页面主体结构 ===== -->
 <body>
 <div>
+    <!-- 游戏主容器：包含画布、信息面板、状态栏 -->
     <div class="game-wrapper">
+        <!-- 游戏画布：所有游戏元素（玩家、怪兽、子弹、特效）在此绘制 -->
         <canvas id="gameCanvas" width="800" height="550"></canvas>
+
+        <!-- 信息面板：得分显示 | 生命值心形显示 | 重新起飞按钮 -->
         <div class="info-panel">
             <div class="score-card">
                 💥 得分 <span id="scoreValue">0</span>
@@ -136,6 +168,8 @@
             </div>
             <button id="restartGameBtn">✨ 重新起飞 ✨</button>
         </div>
+
+        <!-- 底部状态栏：左侧为游戏状态消息，右侧为操作提示 -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
             <div class="status" id="gameStateMsg">🚀 移动鼠标 / 手指 控制战机</div>
             <div class="tips">🎮 鼠标移动 / 手指滑动 → 战机跟随 | 自动开火 🔫</div>
@@ -144,52 +178,92 @@
 </div>
 
 <script>
+    /*
+     * ============================================================
+     *  整个游戏逻辑使用 IIFE（立即执行函数）包裹，避免全局变量污染
+     *  游戏主循环由 requestAnimationFrame 驱动，每帧执行 update + draw
+     * ============================================================
+     */
     (function(){
-        // ---------- 飞机打怪兽 · 核心模块 ----------
+        // ========== 获取 Canvas 及 2D 绘图上下文 ==========
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
-        // 游戏状态
+
+        /*
+         * ========== 游戏状态变量 ==========
+         * gameRunning    - 游戏是否正在进行（false 时停止更新，显示 Game Over）
+         * score          - 当前得分
+         * playerHP       - 玩家剩余生命值（初始 3，归零则游戏结束）
+         * invincibleFrames - 无敌帧计数器（被击中后设为 30，每帧递减，>0 时无敌）
+         */
         let gameRunning = true;
         let score = 0;
         let playerHP = 3;          // 初始3条命
         let invincibleFrames = 0;   // 无敌帧 (被击中后短暂无敌)
         
-        // 战机参数
+        /*
+         * ========== 战机（玩家）参数 ==========
+         * 玩家初始位置在画布底部中央，由鼠标/手指实时控制位置
+         * 位置实际在 updateGame() 中根据 mouseX/mouseY 计算得出
+         */
         const PLAYER_WIDTH = 40;
         const PLAYER_HEIGHT = 40;
         let playerX = canvas.width/2 - PLAYER_WIDTH/2;
         let playerY = canvas.height - 70;
-        
-        // 子弹系统
+
+        /*
+         * ========== 子弹系统 ==========
+         * bullets 数组存储所有在场子弹对象 { x, y, w, h }
+         * 子弹每帧向上移动 BULLET_SPEED 像素，飞出屏幕后自动回收
+         * shootCooldown 控制自动射击频率，每 SHOOT_DELAY_FRAMES 帧发射一发
+         */
         let bullets = [];
         const BULLET_WIDTH = 6;
         const BULLET_HEIGHT = 12;
         const BULLET_SPEED = 7;
         let shootCooldown = 0;
         const SHOOT_DELAY_FRAMES = 6;   // 每6帧射一发 (自动连射)
-        
-        // 怪兽系统
+
+        /*
+         * ========== 怪兽系统 ==========
+         * monsters 数组存储所有在场怪兽对象
+         * 怪兽从屏幕顶部（y = -MONSTER_SIZE）生成，向下移动
+         * baseMonsterSpeed 会随分数提高而增加（动态难度）
+         * 怪兽有 3 种类型（详见 spawnMonster 函数注释）
+         */
         let monsters = [];
         const MONSTER_SIZE = 42;
         let monsterSpawnCounter = 0;
         const MONSTER_SPAWN_DELAY_FRAMES = 28;  // 生成间隔帧数
         let baseMonsterSpeed = 2.2;
-        
-        // 爆炸特效
+
+        // ========== 爆炸特效数组 ==========
+        // 每个元素 { x, y, frames }，frames 递减至 0 时移除
         let explosions = [];
-        
-        // 鼠标/触摸位置控制 (支持移动端)
+
+        /*
+         * ========== 鼠标/触摸位置 ==========
+         * 记录鼠标或手指在画布坐标系中的当前位置
+         * updateGame 中会将战机位置平滑跟随此坐标
+         * 兼容桌面鼠标和移动端触摸
+         */
         let mouseX = playerX + PLAYER_WIDTH/2;
         let mouseY = playerY + PLAYER_HEIGHT/2;
-        
-        // UI 元素
+
+        // ========== DOM UI 元素引用 ==========
         const scoreSpan = document.getElementById('scoreValue');
         const hpHeartsSpan = document.getElementById('hpHearts');
         const gameStateSpan = document.getElementById('gameStateMsg');
         const restartBtn = document.getElementById('restartGameBtn');
         
-        // ---------- 辅助函数 ----------
+        // ========== 辅助函数 ==========
+
+        /*
+         * updateUI() - 刷新界面显示
+         * 1. 更新得分数字
+         * 2. 用 emoji 心形（红心/黑心/骷髅）表示剩余生命值
+         *    例如：3HP = ❤️❤️❤️，2HP = ❤️❤️🖤，0HP = 💀
+         */
         function updateUI() {
             scoreSpan.innerText = score;
             // 更新心形显示
@@ -199,7 +273,11 @@
             hpHeartsSpan.innerText = heartStr.trim() || '💀';
         }
         
-        // 重置游戏
+        /*
+         * resetGame() - 重置所有游戏状态到初始值
+         * 清空子弹、怪兽、爆炸特效数组，重置分数/生命/无敌帧
+         * 将玩家位置和鼠标位置重置到画布底部中央
+         */
         function resetGame() {
             gameRunning = true;
             score = 0;
@@ -220,7 +298,14 @@
             gameStateSpan.style.color = '#b8e2ff';
         }
         
-        // 生成新怪兽
+        /*
+         * spawnMonster() - 从屏幕顶部随机位置生成一只新怪兽
+         * 怪兽类型由随机数决定，共 3 种：
+         *   type 0（红色）：+10 分，1 HP
+         *   type 1（紫色）：+20 分，1 HP
+         *   type 2（蓝色）：+30 分，2 HP（需要命中两次才能击杀）
+         * 每只怪兽的下落速度 = baseMonsterSpeed + 随机增量
+         */
         function spawnMonster() {
             let randX = Math.random() * (canvas.width - MONSTER_SIZE - 20) + 10;
             let monsterType = Math.floor(Math.random() * 3); // 0,1,2 不同颜色和分值
@@ -254,12 +339,20 @@
             });
         }
         
-        // 添加爆炸特效
+        /*
+         * addExplosion() - 在指定坐标添加爆炸特效
+         * 爆炸持续 12 帧，绘制时从中心扩散并逐渐透明
+         */
         function addExplosion(x, y) {
             explosions.push({ x: x, y: y, frames: 12 }); // 持续12帧
         }
-        
-        // 玩家受伤
+
+        /*
+         * damagePlayer() - 玩家受到伤害
+         * 如果正在无敌状态则不受伤（invincibleFrames > 0）
+         * 受伤后生命值 -1，若归零则游戏结束
+         * 存活时获得 30 帧（约 0.5 秒）无敌保护，并显示受伤提示
+         */
         function damagePlayer() {
             if(!gameRunning) return;
             if(invincibleFrames > 0) return;
@@ -281,14 +374,25 @@
             }, 600);
         }
         
-        // 更新逻辑
+        /*
+         * updateGame() - 游戏核心更新逻辑，每帧调用一次
+         * 执行顺序：
+         *   1. 无敌帧递减
+         *   2. 玩家位置跟随鼠标/手指（限制在画布范围内）
+         *   3. 自动射击（从玩家顶部中央发射子弹）
+         *   4. 子弹向上移动，飞出屏幕则移除
+         *   5. 怪兽向下移动，与玩家碰撞检测（扣血+爆炸）
+         *   6. 子弹与怪兽碰撞检测（扣怪兽血量，血量归零则击杀得分）
+         *   7. 动态生成新怪兽（间隔随分数缩短，难度递增）
+         *   8. 动态调整怪兽基础速度（分段式难度曲线）
+         */
         function updateGame() {
             if(!gameRunning) return;
-            
+
             // 无敌帧递减
             if(invincibleFrames > 0) invincibleFrames--;
-            
-            // 1. 战机跟随鼠标/手指 (边界限制)
+
+            // --- 1. 战机跟随鼠标/手指位置（X/Y 均限制在画布安全区域内）---
             let targetX = mouseX - PLAYER_WIDTH/2;
             targetX = Math.min(Math.max(targetX, 5), canvas.width - PLAYER_WIDTH - 5);
             playerX = targetX;
@@ -296,8 +400,8 @@
             let targetY = mouseY - PLAYER_HEIGHT/2;
             targetY = Math.min(Math.max(targetY, canvas.height - 130), canvas.height - 70);
             playerY = targetY;
-            
-            // 2. 自动射击
+
+            // --- 2. 自动射击：冷却归零时从战机顶部中央发射子弹 ---
             if(shootCooldown <= 0) {
                 bullets.push({
                     x: playerX + PLAYER_WIDTH/2 - BULLET_WIDTH/2,
@@ -309,8 +413,8 @@
             } else {
                 shootCooldown--;
             }
-            
-            // 子弹移动
+
+            // --- 3. 子弹移动：每帧向上移动，超出屏幕边界则回收 ---
             for(let i=0; i<bullets.length; i++) {
                 bullets[i].y -= BULLET_SPEED;
                 if(bullets[i].y + bullets[i].h < 0 || bullets[i].y > canvas.height) {
@@ -318,36 +422,38 @@
                     i--;
                 }
             }
-            
-            // 怪兽移动 & 碰撞（边界删除）
+
+            // --- 4. 怪兽移动 & 玩家碰撞检测 ---
             for(let i=0; i<monsters.length; i++) {
                 let m = monsters[i];
                 m.y += m.speedY;
+                // 怪兽移出屏幕底部或顶部远处则回收
                 if(m.y > canvas.height + 100 || m.y + m.height < -100) {
                     monsters.splice(i,1);
                     i--;
                     continue;
                 }
-                // 怪兽与玩家碰撞检测 (矩形)
+                // 矩形碰撞检测：怪兽与玩家重叠时造成伤害
                 if(invincibleFrames <= 0 && gameRunning) {
                     if(playerX < m.x + m.width && playerX + PLAYER_WIDTH > m.x &&
                        playerY < m.y + m.height && playerY + PLAYER_HEIGHT > m.y) {
                         damagePlayer();
                         addExplosion(m.x + m.width/2, m.y + m.height/2);
-                        monsters.splice(i,1);
+                        monsters.splice(i,1);   // 碰撞后怪兽也消失
                         i--;
                         if(!gameRunning) break;
                         continue;
                     }
                 }
             }
-            
+
             if(!gameRunning) return;
-            
-            // 子弹 vs 怪兽碰撞 (带血量)
+
+            // --- 5. 子弹 vs 怪兽碰撞检测（支持多血量怪兽）---
             for(let i=0; i<bullets.length; i++) {
                 let bullet = bullets[i];
                 let hitIndex = -1;
+                // 遍历所有怪兽，找到第一个与当前子弹碰撞的
                 for(let j=0; j<monsters.length; j++) {
                     let mon = monsters[j];
                     if(bullet.x < mon.x + mon.width && bullet.x + bullet.w > mon.x &&
@@ -358,23 +464,23 @@
                 }
                 if(hitIndex !== -1) {
                     let targetMonster = monsters[hitIndex];
-                    targetMonster.hp -= 1;
-                    bullets.splice(i,1);
+                    targetMonster.hp -= 1;      // 扣除怪兽 1 点血量
+                    bullets.splice(i,1);         // 子弹消失
                     if(targetMonster.hp <= 0) {
-                        // 击杀得分
+                        // 击杀：累加得分、播放爆炸、移除怪兽
                         score += targetMonster.points;
                         updateUI();
                         addExplosion(targetMonster.x + targetMonster.width/2, targetMonster.y + targetMonster.height/2);
                         monsters.splice(hitIndex,1);
                     } else {
-                        // 命中但未死, 添加小光效
+                        // 命中但未死，播放小型光效反馈
                         addExplosion(targetMonster.x + targetMonster.width/2, targetMonster.y + 10, 4);
                     }
                     i--;
                 }
             }
-            
-            // 动态生成怪兽（基于计数器）
+
+            // --- 6. 动态生成怪兽（计数器机制）---
             if(monsterSpawnCounter <= 0) {
                 spawnMonster();
                 // 动态难度: 分数越高生成越快，但限制最低间隔12帧
@@ -383,18 +489,29 @@
             } else {
                 monsterSpawnCounter--;
             }
-            
-            // 简单难度平衡，随分数增加怪兽速度上限（不超过4.5）
+
+            // --- 7. 动态难度：随分数提高怪兽基础移动速度 ---
             if(score > 800) baseMonsterSpeed = 3.6;
             else if(score > 400) baseMonsterSpeed = 2.9;
             else baseMonsterSpeed = 2.2;
         }
         
-        // ---------- 华丽绘制图形 ----------
+        /*
+         * draw() - 渲染函数，每帧调用一次，负责绘制所有视觉元素
+         * 绘制顺序（后绘制的覆盖先绘制的）：
+         *   1. 深色星空背景 + 闪烁星星
+         *   2. 子弹（发光能量光束）
+         *   3. 怪兽（带眼睛、角、眉毛、血条）
+         *   4. 玩家战机（三角形机身 + 驾驶舱 + 机翼 + 无敌闪烁）
+         *   5. 爆炸特效（逐渐扩大的圆形光效）
+         *   6. Game Over 蒙层（半透明遮罩 + 文字）
+         *   7. 准星光晕（鼠标位置的半透明圆圈）
+         */
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // 1. 深邃星空背景 + 动态星星
+
+            // --- 1. 深邃星空背景 + 动态闪烁星星 ---
+            // 用 sin 函数让星星亮度随时间变化，营造星空闪烁感
             ctx.fillStyle = '#030a1a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             for(let i=0; i<150; i++) {
@@ -403,30 +520,30 @@
                 ctx.fillRect( (i*131)%canvas.width, (i*57)%canvas.height, 2, 2);
             }
             
-            // 2. 子弹绘制 (能量光束)
+            // --- 2. 子弹绘制：金色渐变能量光束，带发光阴影 ---
             for(let b of bullets) {
                 const grad = ctx.createLinearGradient(b.x, b.y, b.x+b.w, b.y+b.h);
-                grad.addColorStop(0, '#ffff80');
-                grad.addColorStop(1, '#ffaa44');
+                grad.addColorStop(0, '#ffff80');   // 亮黄色头部
+                grad.addColorStop(1, '#ffaa44');   // 橙色尾部
                 ctx.fillStyle = grad;
                 ctx.shadowBlur = 8;
-                ctx.shadowColor = '#ffcc44';
+                ctx.shadowColor = '#ffcc44';       // 金色光晕
                 ctx.fillRect(b.x, b.y, b.w, b.h);
-                ctx.fillStyle = '#fff3aa';
+                ctx.fillStyle = '#fff3aa';         // 中心高亮条
                 ctx.fillRect(b.x+1, b.y, b.w-2, b.h);
                 ctx.shadowBlur = 0;
             }
             
-            // 3. 怪兽绘制 (带眼睛与动态动画)
+            // --- 3. 怪兽绘制：圆角矩形身体 + 眼睛 + 角 + 眉毛 + 血条 ---
             for(let m of monsters) {
-                // 身体
+                // 身体（圆角矩形，颜色由类型决定）
                 ctx.shadowBlur = 6;
                 ctx.shadowColor = 'rgba(0,0,0,0.5)';
                 ctx.fillStyle = m.color;
                 ctx.beginPath();
                 ctx.roundRect(m.x, m.y, m.width, m.height, 12);
                 ctx.fill();
-                // 怪兽花纹
+                // 怪兽眼睛：白色眼球 + 黑色瞳孔
                 ctx.fillStyle = '#2d1b1b';
                 ctx.beginPath();
                 ctx.ellipse(m.x+m.width*0.7, m.y+m.height*0.3, 8, 6, 0, 0, Math.PI*2);
@@ -439,21 +556,21 @@
                 ctx.beginPath();
                 ctx.arc(m.x+m.width*0.73, m.y+m.height*0.26, 2, 0, Math.PI*2);
                 ctx.fill();
-                // 尖角/角
+                // 头顶尖角
                 ctx.fillStyle = '#a5522b';
                 ctx.beginPath();
                 ctx.moveTo(m.x+m.width*0.2, m.y-8);
                 ctx.lineTo(m.x+m.width*0.35, m.y+2);
                 ctx.lineTo(m.x+m.width*0.05, m.y+2);
                 ctx.fill();
-                // 血量显示(多血怪)
+                // 血条显示（仅 maxHp > 1 的厚血怪显示，如蓝色怪）
                 if(m.maxHp > 1) {
                     ctx.fillStyle = '#dd3333';
                     ctx.fillRect(m.x+5, m.y-12, (m.width-10) * (m.hp/m.maxHp), 6);
                     ctx.fillStyle = '#aa2222';
                     ctx.fillRect(m.x+5, m.y-12, m.width-10, 2);
                 }
-                // 凶恶眉毛
+                // 凶恶眉毛（两条对角线）
                 ctx.beginPath();
                 ctx.strokeStyle = '#6b2e00';
                 ctx.lineWidth = 3;
@@ -465,26 +582,27 @@
                 ctx.stroke();
             }
             
-            // 4. 玩家星际战机 (炫酷设计)
+            // --- 4. 玩家星际战机绘制：三角形机身 + 驾驶舱 + 双机翼 ---
             ctx.shadowBlur = 12;
-            ctx.shadowColor = '#3cc0ff';
-            // 机身
+            ctx.shadowColor = '#3cc0ff';       // 蓝色光晕
+            // 机身（菱形/箭头形状）
             ctx.fillStyle = '#5fceff';
             ctx.beginPath();
-            ctx.moveTo(playerX + PLAYER_WIDTH/2, playerY);
-            ctx.lineTo(playerX + PLAYER_WIDTH-8, playerY + PLAYER_HEIGHT-10);
-            ctx.lineTo(playerX + PLAYER_WIDTH/2, playerY + PLAYER_HEIGHT);
-            ctx.lineTo(playerX + 8, playerY + PLAYER_HEIGHT-10);
+            ctx.moveTo(playerX + PLAYER_WIDTH/2, playerY);           // 顶部尖端
+            ctx.lineTo(playerX + PLAYER_WIDTH-8, playerY + PLAYER_HEIGHT-10);  // 右翼
+            ctx.lineTo(playerX + PLAYER_WIDTH/2, playerY + PLAYER_HEIGHT);      // 底部
+            ctx.lineTo(playerX + 8, playerY + PLAYER_HEIGHT-10);               // 左翼
             ctx.fill();
+            // 机身中心矩形装饰
             ctx.fillStyle = '#2e9eff';
             ctx.beginPath();
             ctx.rect(playerX+12, playerY+12, PLAYER_WIDTH-24, 18);
             ctx.fill();
-            // 机翼
+            // 左右机翼
             ctx.fillStyle = '#47c5ff';
             ctx.fillRect(playerX+4, playerY+PLAYER_HEIGHT-16, 8, 12);
             ctx.fillRect(playerX+PLAYER_WIDTH-12, playerY+PLAYER_HEIGHT-16, 8, 12);
-            // 驾驶舱光效
+            // 驾驶舱：白色外圈 + 蓝色内圈
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
             ctx.arc(playerX+PLAYER_WIDTH/2, playerY+15, 7, 0, Math.PI*2);
@@ -493,7 +611,7 @@
             ctx.beginPath();
             ctx.arc(playerX+PLAYER_WIDTH/2, playerY+15, 4, 0, Math.PI*2);
             ctx.fill();
-            // 无敌闪烁 (半透明白光)
+            // 无敌状态闪烁效果：半透明白色矩形间歇性覆盖（视觉闪烁）
             if(invincibleFrames > 0 && (Math.floor(Date.now()/50) % 3 < 1)) {
                 ctx.fillStyle = 'rgba(255,255,200,0.7)';
                 ctx.beginPath();
@@ -502,26 +620,28 @@
             }
             ctx.shadowBlur = 0;
             
-            // 5. 爆炸特效
+            // --- 5. 爆炸特效：两层同心圆，从中心向外扩散并逐渐透明 ---
             for(let i=0; i<explosions.length; i++) {
                 let e = explosions[i];
-                let size = 18 * (1 - e.frames/12);
+                let size = 18 * (1 - e.frames/12);   // 随帧数递减而扩大
+                // 外层：橙红色
                 ctx.fillStyle = `rgba(255, 100, 30, ${1 - e.frames/12})`;
                 ctx.beginPath();
                 ctx.arc(e.x, e.y, size, 0, Math.PI*2);
                 ctx.fill();
+                // 内层：亮黄色（偏移位置增加层次感）
                 ctx.fillStyle = `rgba(255, 200, 50, ${0.8 - e.frames/12})`;
                 ctx.beginPath();
                 ctx.arc(e.x-3, e.y-2, size*0.6, 0, Math.PI*2);
                 ctx.fill();
                 e.frames--;
                 if(e.frames <= 0) {
-                    explosions.splice(i,1);
+                    explosions.splice(i,1);     // 动画结束，移除特效
                     i--;
                 }
             }
-            
-            // 游戏结束额外蒙层
+
+            // --- 6. 游戏结束蒙层：半透明黑色遮罩 + GAME OVER 文字 ---
             if(!gameRunning) {
                 ctx.fillStyle = 'rgba(0,0,0,0.75)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -533,15 +653,19 @@
                 ctx.fillStyle = '#fff0aa';
                 ctx.fillText('点击「重新起飞」继续征战', canvas.width/2-130, canvas.height/2+30);
             }
-            
-            // 准星光晕
+
+            // --- 7. 准星光晕：在鼠标/手指位置绘制半透明蓝色圆圈 ---
             ctx.beginPath();
             ctx.arc(mouseX, mouseY, 12, 0, Math.PI*2);
             ctx.fillStyle = 'rgba(100,200,255,0.2)';
             ctx.fill();
         }
         
-        // 辅助方法: Canvas roundRect
+        /*
+         * roundRect 兼容性 polyfill
+         * 部分旧浏览器不支持 ctx.roundRect()，此处手动实现圆角矩形路径
+         * 使用 quadraticCurveTo 绘制四角圆弧
+         */
         if (!CanvasRenderingContext2D.prototype.roundRect) {
             CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
                 if (w < 2 * r) r = w / 2;
@@ -559,7 +683,13 @@
             };
         }
         
-        // ---------- 鼠标/触摸 控制事件 (支持移动端)----------
+        /*
+         * ========== 鼠标/触摸事件处理 ==========
+         * handlePointerMove() - 统一处理鼠标和触摸移动事件
+         *   - 获取客户端坐标，转换为 Canvas 画布坐标系
+         *   - 处理触摸事件时调用 preventDefault 阻止页面滚动
+         *   - 坐标值限制在 [0, canvas.width/height] 范围内
+         */
         function handlePointerMove(e) {
             if(!gameRunning && playerHP<=0) return;
             const rect = canvas.getBoundingClientRect();
@@ -582,11 +712,15 @@
             mouseY = canvasY;
         }
         
+        // 阻止触摸时页面跟随滚动（移动端优化）
         function preventScroll(e) {
             if(e.cancelable) e.preventDefault();
         }
-        
-        // 动画循环
+
+        /*
+         * 游戏主循环：由 requestAnimationFrame 驱动
+         * 每帧依次执行 updateGame（逻辑更新）和 draw（渲染）
+         */
         let lastTimestamp = 0;
         function gameLoop() {
             updateGame();
@@ -594,7 +728,13 @@
             requestAnimationFrame(gameLoop);
         }
         
-        // 绑定事件与初始化
+        /*
+         * init() - 游戏初始化入口
+         * 1. 重置游戏状态
+         * 2. 绑定鼠标/触摸/右键菜单事件
+         * 3. 绑定"重新起飞"按钮点击事件（重置所有状态后重新开始）
+         * 4. 启动游戏主循环
+         */
         function init() {
             resetGame();
             // 鼠标控制

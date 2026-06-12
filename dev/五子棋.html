@@ -1,56 +1,74 @@
+<!--
+    ========================================
+    古风五子棋 (Gomoku) —— 双人对弈网页游戏
+    ========================================
+    功能概述：
+      - 15×15 标准棋盘，黑棋先行，轮流落子
+      - 先将五颗同色棋子连成一线（横、竖、左斜、右斜）者获胜
+      - 支持悔棋（撤销上一步）和重新开局
+      - 古典中国书法风格界面：宣纸纹理背景、楷书字体、仿古配色
+    技术栈：纯 HTML + CSS + JavaScript，无第三方依赖
+    ========================================
+-->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <title>古风五子棋</title>
     <style>
+        /* ===== 全局重置：清除浏览器默认内外边距，统一盒模型 ===== */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
+        /* ===== 页面主体：宣纸纹理背景 + 居中布局 ===== */
         body {
-            /* 宣纸纹理背景 */
+            /* 宣纸纹理背景：使用内联SVG制造宣纸纤维纹理效果 */
             background-color: #f5efe0;
             background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23d9c7b8' fill-opacity='0.2' fill-rule='evenodd'/%3E%3C/svg%3E");
+            /* Flex纵向居中布局，使页面内容垂直水平居中 */
             display: flex;
             flex-direction: column;
             align-items: center;
             padding: 30px 20px;
+            /* 楷体字体优先，营造古典书法氛围 */
             font-family: "KaiTi", "STKaiti", "微软雅黑", serif;
         }
 
-        /* 标题样式 古风书法 */
+        /* ===== 标题样式：古风书法风格 ===== */
+        /* 深红色文字 + 字间距加宽，底部金色下划线装饰 */
         .main-title {
             font-size: 38px;
-            color: #8c3123;
+            color: #8c3123;              /* 深朱红色，古典庄重 */
             font-weight: bold;
-            text-shadow: 2px 2px 3px rgba(0,0,0,0.15);
-            letter-spacing: 8px;
+            text-shadow: 2px 2px 3px rgba(0,0,0,0.15);  /* 轻微阴影增加立体感 */
+            letter-spacing: 8px;         /* 字间距宽，模拟书法布局 */
             margin-bottom: 20px;
-            border-bottom: 2px solid #b88646;
+            border-bottom: 2px solid #b88646;  /* 金色下划线装饰 */
             padding-bottom: 10px;
         }
 
-        /* 功能按钮栏 */
+        /* ===== 功能按钮栏：水平排列"重新开局"和"悔棋一步"按钮 ===== */
         .control-bar {
             display: flex;
-            gap: 18px;
+            gap: 18px;                   /* 按钮间距 */
             margin-bottom: 20px;
         }
 
+        /* ===== 通用按钮样式：仿古铜色渐变 ===== */
         .btn {
             padding: 10px 24px;
             font-size: 16px;
             font-family: "KaiTi", serif;
-            background: linear-gradient(#c98b4e, #a06b36);
-            color: #fffef8;
-            border: 2px solid #7a4f2b;
+            background: linear-gradient(#c98b4e, #a06b36);  /* 从亮铜到暗铜的渐变 */
+            color: #fffef8;              /* 米白色文字 */
+            border: 2px solid #7a4f2b;   /* 深棕色边框 */
             border-radius: 6px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+            transition: all 0.2s ease;   /* 悬停过渡动画 */
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);  /* 立体阴影 */
         }
 
         .btn:hover {
@@ -63,90 +81,100 @@
             transform: translateY(0);
         }
 
-        /* 棋盘外层容器 雕花边框 */
+        /* ===== 棋盘外层容器：雕花边框效果 ===== */
+        /* 深棕色厚边框模拟古典木雕画框，配合大阴影营造立体感 */
         .board-wrap {
-            position: relative;
-            border: 12px solid #8c5a2c;
+            position: relative;          /* 为内部遮罩和弹窗提供定位参照 */
+            border: 12px solid #8c5a2c;  /* 12px仿木雕深棕色边框 */
             border-radius: 8px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);  /* 大范围阴影 */
         }
 
-        /* 主棋盘 古木色 */
+        /* ===== 主棋盘区域：仿古木色，内嵌木纹纹理 ===== */
+        /* 560×560像素，对应15×15棋盘，每格约37.3px */
         .board {
             width: 560px;
             height: 560px;
-            background-color: #e8d4b9;
+            background-color: #e8d4b9;   /* 浅木色底色 */
+            /* SVG内联图案，模拟木纹纹理效果 */
             background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23c9b49c' fill-opacity='0.15'%3E%3Cpath d='M0 38.59l2.83-2.83 1.41 1.41L1.41 40H0v-1.41zM0 1.4l2.83 2.83 1.41-1.41L1.41 0H0v1.41zM38.59 40l-2.83-2.83 1.41-1.41L40 38.59V40h-1.41zM40 1.41l-2.83 2.83-1.41-1.41L38.59 0H40v1.41zM20 18.6l2.83-2.83 1.41 1.41-2.83 2.83 2.83 2.83-1.41 1.41-2.83-2.83-2.83 2.83-1.41-1.41 2.83-2.83-2.83-2.83 1.41-1.41 2.83 2.83z'/%3E%3C/g%3E%3C/svg%3E");
-            position: relative;
+            position: relative;          /* 为棋子绝对定位提供参照 */
         }
 
-        /* 棋盘线条 */
+        /* ===== 棋盘线条：深棕色线条绘制网格 ===== */
+        /* 线条通过JS动态创建，水平线和垂直线各15条 */
         .line {
             position: absolute;
-            background: #5c4033;
+            background: #5c4033;         /* 深棕色，与棋盘木色搭配 */
         }
 
-        /* 棋子样式 圆润质感 */
+        /* ===== 棋子通用样式：圆形 + 阴影质感 ===== */
+        /* 棋子26×26像素，通过translate居中对齐到交叉点 */
         .piece {
             width: 26px;
             height: 26px;
-            border-radius: 50%;
+            border-radius: 50%;          /* 正圆形 */
             position: absolute;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 3px 8px rgba(0,0,0,0.35);
-            pointer-events: none;
+            transform: translate(-50%, -50%);  /* 使棋子中心对齐点击坐标 */
+            box-shadow: 0 3px 8px rgba(0,0,0,0.35);  /* 模拟棋子立体感 */
+            pointer-events: none;        /* 防止棋子拦截点击事件 */
         }
 
+        /* 黑棋：深灰到纯黑径向渐变，模拟光照高光效果 */
         .black {
-            background: radial-gradient(#333, #111);
+            background: radial-gradient(#333, #111);  /* 中心偏亮的渐变 */
             border: 1px solid #000;
         }
 
+        /* 白棋：纯白到浅灰径向渐变，模拟玉石质感 */
         .white {
-            background: radial-gradient(#fff, #e9e9e9);
+            background: radial-gradient(#fff, #e9e9e9);  /* 中心纯白的渐变 */
             border: 1px solid #ccc;
         }
 
-        /* 提示文字 */
+        /* ===== 底部提示文字：显示游戏规则 ===== */
         .game-tips {
             margin-top: 18px;
             font-size: 17px;
-            color: #704c2a;
+            color: #704c2a;              /* 深棕色文字 */
             letter-spacing: 2px;
         }
 
-        /* 遮罩层 */
+        /* ===== 遮罩层：游戏结束时覆盖棋盘，防止继续操作 ===== */
+        /* 半透明深棕色，位于弹窗之下（z-index: 98） */
         .mask {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(60, 40, 20, 0.25);
+            background: rgba(60, 40, 20, 0.25);  /* 半透明深棕 */
             z-index: 98;
-            display: none;
+            display: none;               /* 默认隐藏，游戏结束后由JS显示 */
         }
 
-        /* 胜利弹窗 古风样式 */
+        /* ===== 胜利弹窗：古风双线边框样式 ===== */
+        /* 居中定位在棋盘上方，显示获胜信息和操作按钮 */
         .win-modal {
             position: absolute;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%);  /* 水平垂直居中 */
             width: 320px;
             padding: 35px 25px;
-            background: #f8f1e3;
-            border: 4px double #8c5a2c;
+            background: #f8f1e3;         /* 暖米色背景 */
+            border: 4px double #8c5a2c;  /* 古铜色双线边框，古典感 */
             border-radius: 10px;
             text-align: center;
             box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-            z-index: 99;
-            display: none;
+            z-index: 99;                 /* 高于遮罩层(98) */
+            display: none;               /* 默认隐藏 */
         }
 
+        /* 弹窗标题：获胜方提示文字 */
         .win-modal h3 {
             font-size: 26px;
-            color: #8c3123;
+            color: #8c3123;              /* 与主标题同色系 */
             margin-bottom: 25px;
             letter-spacing: 4px;
         }
@@ -157,17 +185,24 @@
     </style>
 </head>
 
+<!-- ==================== 页面主体内容 ==================== -->
 <body>
+    <!-- 游戏主标题：古风书法风格 -->
     <h1 class="main-title">古 风 五 子 棋</h1>
 
+    <!-- 控制按钮栏：重新开局和悔棋功能 -->
     <div class="control-bar">
         <button class="btn" id="restart">重新开局</button>
         <button class="btn" id="undo">悔棋一步</button>
     </div>
 
+    <!-- 棋盘外层容器（含雕花边框） -->
     <div class="board-wrap">
+        <!-- 主棋盘区域：线条和棋子由JS动态生成 -->
         <div class="board" id="board"></div>
+        <!-- 遮罩层：游戏结束时覆盖棋盘，阻止继续点击 -->
         <div class="mask" id="mask"></div>
+        <!-- 胜利弹窗：显示获胜方，提供"再来一局"和"关闭"按钮 -->
         <div class="win-modal" id="winModal">
             <h3 id="winText"></h3>
             <button class="btn" id="modalRestart">再来一局</button>
@@ -175,139 +210,204 @@
         </div>
     </div>
 
+    <!-- 底部游戏规则提示 -->
     <div class="game-tips">黑棋先行 · 五子相连 即为得胜</div>
 
+    <!-- ==================== JavaScript 游戏逻辑 ==================== -->
     <script>
-        const board = document.getElementById('board');
-        const restartBtn = document.getElementById('restart');
-        const undoBtn = document.getElementById('undo');
-        const winModal = document.getElementById('winModal');
-        const winText = document.getElementById('winText');
-        const mask = document.getElementById('mask');
-        const modalRestart = document.getElementById('modalRestart');
-        const closeModal = document.getElementById('closeModal');
+        /* ===== DOM元素引用：获取页面中所有交互元素 ===== */
+        const board = document.getElementById('board');         // 棋盘容器
+        const restartBtn = document.getElementById('restart');  // 重新开局按钮
+        const undoBtn = document.getElementById('undo');        // 悔棋按钮
+        const winModal = document.getElementById('winModal');   // 胜利弹窗
+        const winText = document.getElementById('winText');     // 获胜方文字
+        const mask = document.getElementById('mask');           // 遮罩层
+        const modalRestart = document.getElementById('modalRestart');  // 弹窗内的"再来一局"
+        const closeModal = document.getElementById('closeModal');      // 弹窗内的"关闭"按钮
 
-        const size = 15;
-        const gap = 560 / size;
-        let currentColor = 'black';
-        let gameOver = false;
+        /* ===== 游戏核心状态变量 ===== */
+        const size = 15;                 // 棋盘尺寸：15×15标准五子棋棋盘
+        const gap = 560 / size;          // 每格间距：560px / 15 ≈ 37.3px
+        let currentColor = 'black';      // 当前落子颜色：'black' 或 'white'，黑棋先行
+        let gameOver = false;            // 游戏是否结束标志
         let chessMap = Array.from({ length: size }, () => Array(size).fill(0));
-        let history = [];
+        // 棋盘状态二维数组：0=空位，1=黑棋，2=白棋
+        let history = [];                // 落子历史记录，用于悔棋功能
 
-        // 初始化游戏
+        /**
+         * 初始化/重置游戏
+         * 清空棋盘上的所有棋子和线条，重置所有游戏状态，
+         * 隐藏弹窗和遮罩，重新绘制棋盘线条
+         */
         function initBoard() {
-            board.innerHTML = '';
-            currentColor = 'black';
-            gameOver = false;
-            chessMap = Array.from({ length: size }, () => Array(size).fill(0));
-            history = [];
-            winModal.style.display = 'none';
-            mask.style.display = 'none';
-            drawLines();
+            board.innerHTML = '';        // 清空棋盘内所有子元素（棋子+线条）
+            currentColor = 'black';      // 重置为黑棋先行
+            gameOver = false;            // 重置游戏结束标志
+            chessMap = Array.from({ length: size }, () => Array(size).fill(0));  // 清空棋盘数据
+            history = [];                // 清空落子历史
+            winModal.style.display = 'none';  // 隐藏胜利弹窗
+            mask.style.display = 'none';      // 隐藏遮罩层
+            drawLines();                       // 重新绘制棋盘网格线
         }
 
-        // 绘制棋盘线条
+        /**
+         * 绘制棋盘网格线
+         * 水平线和垂直线各15条，每条线长544px（留8px边距）
+         * 棋盘交叉点中心坐标 = i * gap + gap/2
+         */
         function drawLines() {
+            // 绘制15条水平线
             for (let i = 0; i < size; i++) {
                 const line = document.createElement('div');
                 line.className = 'line';
-                line.style.width = '544px';
-                line.style.height = '1px';
-                line.style.left = '8px';
-                line.style.top = (i * gap + gap / 2) + 'px';
+                line.style.width = '544px';   // 水平线宽度（留左右各8px边距）
+                line.style.height = '1px';    // 线条厚度
+                line.style.left = '8px';      // 左边距
+                line.style.top = (i * gap + gap / 2) + 'px';  // Y坐标：格子中心
                 board.appendChild(line);
             }
+            // 绘制15条垂直线
             for (let i = 0; i < size; i++) {
                 const line = document.createElement('div');
                 line.className = 'line';
-                line.style.width = '1px';
-                line.style.height = '544px';
-                line.style.left = (i * gap + gap / 2) + 'px';
-                line.style.top = '8px';
+                line.style.width = '1px';     // 线条厚度
+                line.style.height = '544px';  // 垂直线高度（留上下各8px边距）
+                line.style.left = (i * gap + gap / 2) + 'px';  // X坐标：格子中心
+                line.style.top = '8px';       // 上边距
                 board.appendChild(line);
             }
         }
 
-        // 创建棋子
+        /**
+         * 创建棋子DOM元素并放置到棋盘上
+         * @param {number} x - 列坐标（0~14）
+         * @param {number} y - 行坐标（0~14）
+         * @param {string} color - 棋子颜色：'black' 或 'white'
+         * @returns {HTMLElement} 创建的棋子DOM元素
+         */
         function createPiece(x, y, color) {
             const piece = document.createElement('div');
-            piece.className = `piece ${color}`;
+            piece.className = `piece ${color}`;  // 设置样式类：通用piece + 颜色类
+            // 将网格坐标转换为像素坐标（交叉点中心位置）
             piece.style.left = (x * gap + gap / 2) + 'px';
             piece.style.top = (y * gap + gap / 2) + 'px';
             board.appendChild(piece);
             return piece;
         }
 
-        // 胜负判断
+        /**
+         * 胜负判断：检查以(x,y)为中心在四个方向上是否有五子连珠
+         * 检查的四个方向：
+         *   [1, 0]  → 水平方向（左右）
+         *   [0, 1]  → 垂直方向（上下）
+         *   [1, 1]  → 左上-右下对角线
+         *   [1, -1] → 右上-左下对角线
+         * 对每个方向，从落子点向正反两个方向各延伸最多4格，
+         * 统计连续同色棋子数，若总数>=5则获胜。
+         *
+         * @param {number} x - 落子列坐标
+         * @param {number} y - 落子行坐标
+         * @param {string} color - 当前落子颜色
+         * @returns {boolean} 是否形成五子连珠
+         */
         function checkWin(x, y, color) {
-            const val = color === 'black' ? 1 : 2;
+            const val = color === 'black' ? 1 : 2;  // 将颜色转换为数字标识
+            // 四个检查方向：水平、垂直、主对角线、副对角线
             const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
             for (let [dx, dy] of dirs) {
-                let count = 1;
+                let count = 1;           // 当前落子点本身算1颗
+                // 向正方向检查（最多4格）
                 for (let i = 1; i < 5; i++) {
                     let nx = x + dx * i;
                     let ny = y + dy * i;
+                    // 边界检查 + 同色检查
                     if (nx >= 0 && nx < size && ny >= 0 && ny < size && chessMap[ny][nx] === val) count++;
-                    else break;
+                    else break;          // 遇到不同色或越界则停止
                 }
+                // 向反方向检查（最多4格）
                 for (let i = 1; i < 5; i++) {
                     let nx = x - dx * i;
                     let ny = y - dy * i;
                     if (nx >= 0 && nx < size && ny >= 0 && ny < size && chessMap[ny][nx] === val) count++;
                     else break;
                 }
-                if (count >= 5) return true;
+                if (count >= 5) return true;  // 五子或更多连珠，判定获胜
             }
             return false;
         }
 
-        // 弹出胜利窗口
+        /**
+         * 显示胜利弹窗
+         * 设置游戏结束标志，显示获胜方名称，弹出弹窗和遮罩层
+         * @param {string} winner - 获胜方名称（'黑棋' 或 '白棋'）
+         */
         function showWinModal(winner) {
-            gameOver = true;
-            winText.innerText = `「${winner}」得胜！`;
-            winModal.style.display = 'block';
-            mask.style.display = 'block';
+            gameOver = true;             // 标记游戏结束，阻止继续落子
+            winText.innerText = `「${winner}」得胜！`;  // 显示获胜信息
+            winModal.style.display = 'block';   // 显示胜利弹窗
+            mask.style.display = 'block';       // 显示遮罩层
         }
 
-        // 落子逻辑
+        /**
+         * 棋盘点击事件处理 —— 落子核心逻辑
+         * 流程：点击 → 计算网格坐标 → 校验合法性 → 创建棋子 →
+         *       更新棋盘数据 → 记录历史 → 判定胜负 → 切换落子方
+         */
         board.addEventListener('click', (e) => {
-            if (gameOver) return;
-            const rect = board.getBoundingClientRect();
-            const x = Math.floor((e.clientX - rect.left) / gap);
-            const y = Math.floor((e.clientY - rect.top) / gap);
+            if (gameOver) return;        // 游戏已结束则忽略点击
 
+            // 将鼠标像素坐标转换为棋盘网格坐标
+            const rect = board.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / gap);  // 列号 0~14
+            const y = Math.floor((e.clientY - rect.top) / gap);   // 行号 0~14
+
+            // 校验：坐标越界或该位置已有棋子则忽略
             if (x < 0 || x >= size || y < 0 || y >= size || chessMap[y][x] !== 0) return;
 
+            // 创建棋子DOM并放置到棋盘
             const pieceDom = createPiece(x, y, currentColor);
+            // 更新棋盘状态数组（黑=1，白=2）
             const mark = currentColor === 'black' ? 1 : 2;
             chessMap[y][x] = mark;
+            // 记录落子历史，用于悔棋
             history.push({ x, y, color: currentColor, dom: pieceDom });
 
+            // 判定是否获胜
             if (checkWin(x, y, currentColor)) {
                 const winner = currentColor === 'black' ? '黑棋' : '白棋';
                 showWinModal(winner);
-                return;
+                return;                  // 获胜后不再切换落子方
             }
+            // 切换落子方：黑→白 或 白→黑
             currentColor = currentColor === 'black' ? 'white' : 'black';
         });
 
-        // 悔棋
+        /**
+         * 悔棋功能：撤销最后一步落子
+         * 从历史记录中弹出最后一步，清空对应棋盘数据，
+         * 移除棋子DOM，并切换回上一方的落子权
+         */
         undoBtn.onclick = () => {
-            if (history.length === 0 || gameOver) return;
-            const lastStep = history.pop();
-            chessMap[lastStep.y][lastStep.x] = 0;
-            board.removeChild(lastStep.dom);
+            if (history.length === 0 || gameOver) return;  // 无历史或游戏已结束则忽略
+            const lastStep = history.pop();  // 取出最后一步记录
+            chessMap[lastStep.y][lastStep.x] = 0;  // 清空该位置的棋盘数据
+            board.removeChild(lastStep.dom);        // 从棋盘移除该棋子DOM
+            // 切换回上一方（撤销谁的棋就该谁重新下）
             currentColor = currentColor === 'black' ? 'white' : 'black';
         };
 
-        // 重置游戏
+        /* ===== 按钮事件绑定 ===== */
+        // 重新开局按钮：调用initBoard重置全部游戏状态
         restartBtn.onclick = initBoard;
+        // 弹窗内"再来一局"按钮：同样调用initBoard
         modalRestart.onclick = initBoard;
+        // 弹窗内"关闭"按钮：仅关闭弹窗和遮罩，不重置棋盘
         closeModal.onclick = () => {
             winModal.style.display = 'none';
             mask.style.display = 'none';
         };
 
+        /* ===== 页面加载完成后自动初始化棋盘 ===== */
         initBoard();
     </script>
 </body>

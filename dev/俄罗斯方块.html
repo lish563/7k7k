@@ -1,3 +1,19 @@
+<!--
+    ============================================================
+    经典俄罗斯方块 (Tetris) 游戏
+    ============================================================
+    功能说明：
+      - 经典 10×20 格的俄罗斯方块玩法
+      - 7 种标准方块形状（I、O、T、S、Z、L、J），每种有独立颜色
+      - 支持键盘控制：方向键移动/旋转，空格键硬降（直接落到底部）
+      - 消行计分：1行100分、2行300分、3行500分、4行800分（Tetris）
+      - 下一个方块预览、得分显示、游戏状态提示
+      - 暗绿色主题风格，自适应布局
+    操作说明：
+      ← → 左右移动    ↑ 旋转    ↓ 加速下落    空格 硬降到底
+      R 或点击"新一局"按钮 重新开始
+    ============================================================
+-->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -5,11 +21,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>经典俄罗斯方块 | 键盘控制</title>
     <style>
+        /* ===== 全局重置：禁止文本选中，去除移动端点击高亮 ===== */
         * {
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* ===== 页面主体：深绿色渐变背景，内容居中显示 ===== */
         body {
             background: linear-gradient(145deg, #0b2b26 0%, #071a17 100%);
             min-height: 100vh;
@@ -21,6 +39,7 @@
             padding: 20px;
         }
 
+        /* ===== 游戏主容器：深色背景、圆角、阴影营造立体感 ===== */
         .game-container {
             background: #1a1f1e;
             border-radius: 40px;
@@ -28,6 +47,7 @@
             box-shadow: 0 20px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 200, 0.1);
         }
 
+        /* ===== 游戏面板布局：棋盘和信息区水平排列，自动换行 ===== */
         .tetris-panel {
             display: flex;
             gap: 28px;
@@ -36,6 +56,7 @@
             align-items: flex-start;
         }
 
+        /* ===== 画布通用样式：圆角、阴影、深色背景 ===== */
         canvas {
             display: block;
             box-shadow: 0 8px 18px rgba(0, 0, 0, 0.6);
@@ -43,15 +64,18 @@
             background-color: #0a1210;
         }
 
+        /* ===== 主游戏棋盘画布：绿色边框 ===== */
         #boardCanvas {
             border: 3px solid #5f7f6b;
         }
 
+        /* ===== 下一个方块预览画布 ===== */
         #nextCanvas {
             border: 2px solid #4c6b58;
             background-color: #0e1a16;
         }
 
+        /* ===== 右侧信息区域：半透明背景、毛玻璃效果、内发光边框 ===== */
         .info-area {
             background: #0f1815e0;
             backdrop-filter: blur(4px);
@@ -64,6 +88,7 @@
             box-shadow: inset 0 0 0 1px #2f4d3e, 0 10px 20px rgba(0,0,0,0.3);
         }
 
+        /* ===== 得分显示区域：深色胶囊形状背景 ===== */
         .score-box {
             text-align: center;
             background: #010a07;
@@ -79,6 +104,7 @@
             margin-bottom: 8px;
         }
 
+        /* ===== 得分数值：大字号、金色、带发光文字阴影 ===== */
         .score-value {
             font-size: 2.7rem;
             font-weight: bold;
@@ -87,6 +113,7 @@
             font-family: monospace;
         }
 
+        /* ===== 操作说明区域：深色圆角背景，显示按键说明 ===== */
         .controls {
             background: #0b1411;
             border-radius: 40px;
@@ -104,6 +131,7 @@
             flex-wrap: wrap;
         }
 
+        /* ===== 按键徽章样式：模拟键盘按键外观，圆角胶囊形 ===== */
         .key-badge {
             background: #2c2b23;
             padding: 4px 10px;
@@ -114,6 +142,7 @@
             box-shadow: inset 0 -1px 0 #5e5a48;
         }
 
+        /* ===== 按钮样式：金色渐变胶囊按钮，带底部阴影模拟立体按下效果 ===== */
         button {
             background: #e5b13b;
             border: none;
@@ -129,11 +158,13 @@
             box-shadow: 0 4px 0 #8b5a2b;
         }
 
+        /* ===== 按钮点击态：下沉2px模拟物理按压 ===== */
         button:active {
             transform: translateY(2px);
             box-shadow: 0 1px 0 #8b5a2b;
         }
 
+        /* ===== 游戏状态文字提示（如"游戏中"/"GAME OVER"） ===== */
         .status {
             background: #000000aa;
             border-radius: 40px;
@@ -144,6 +175,7 @@
             text-align: center;
         }
 
+        /* ===== 响应式适配：小屏幕（宽度<620px）缩小间距和字号 ===== */
         @media (max-width: 620px) {
             .tetris-panel { gap: 15px; }
             .score-box { width: 120px; }
@@ -152,19 +184,29 @@
         }
     </style>
 </head>
+<!-- ===== 页面主体结构 ===== -->
 <body>
+<!-- 游戏主容器 -->
 <div class="game-container">
+    <!-- 游戏面板：左侧棋盘 + 右侧信息区 -->
     <div class="tetris-panel">
+        <!-- 主游戏画布：10列×20行，每格30px，总宽300×高600 -->
         <canvas id="boardCanvas" width="300" height="600"></canvas>
+
+        <!-- 右侧信息区域 -->
         <div class="info-area">
+            <!-- 得分显示区 -->
             <div class="score-box">
                 <div>🎮 SCORE</div>
                 <div class="score-value" id="scoreDisplay">0</div>
             </div>
+            <!-- 下一个方块预览区 -->
             <div style="text-align: center">
                 <div style="color:#b3e4b0; font-size:0.7rem; margin-bottom:6px;">⬜ NEXT</div>
+                <!-- 预览画布：120×120，用于绘制下一个即将出现的方块 -->
                 <canvas id="nextCanvas" width="120" height="120"></canvas>
             </div>
+            <!-- 操作说明区域：显示按键及其功能 -->
             <div class="controls">
                 <p>
                     <span class="key-badge">◀</span> <span class="key-badge">▶</span> 移动
@@ -174,8 +216,10 @@
                     <span class="key-badge">▼</span> 速降
                     <span class="key-badge">空格</span> 硬到底
                 </p>
+                <!-- 重新开始按钮 -->
                 <button id="resetButton">🔄 新一局</button>
             </div>
+            <!-- 游戏状态文字提示（游戏中 / GAME OVER） -->
             <div class="status" id="gameStatusText">
                 ▶ 游戏中
             </div>
@@ -184,98 +228,116 @@
 </div>
 
 <script>
+    /*
+     * ============================================================
+     * 俄罗斯方块游戏主逻辑（立即执行函数 IIFE）
+     * 将所有变量和函数封装在闭包中，避免全局命名空间污染
+     * ============================================================
+     */
     (function(){
         // ---------- 俄罗斯方块核心参数 ----------
+        // 棋盘列数：标准俄罗斯方块宽度为10列
         const COLS = 10;
-        const ROWS = 20;
+        const ROWS = 20;           // 棋盘行数：标准俄罗斯方块高度为20行
         const CELL_SIZE = 30;    // 画板格子像素 30px
         const NEXT_SIZE = 24;     // 预览区域格子尺寸
-        
+
+        // 获取主棋盘画布及其2D绘图上下文
         const boardCanvas = document.getElementById('boardCanvas');
         const ctx = boardCanvas.getContext('2d');
         const nextCanvas = document.getElementById('nextCanvas');
         const nextCtx = nextCanvas.getContext('2d');
         
+        // 获取得分显示元素和游戏状态文字元素
         const scoreSpan = document.getElementById('scoreDisplay');
         const statusDiv = document.getElementById('gameStatusText');
-        
-        // 游戏状态
+
+        // ---------- 游戏状态变量 ----------
+        // board: 二维数组表示棋盘，0表示空格，1表示已固定的方块
         let board = Array(ROWS).fill().map(() => Array(COLS).fill(0)); // 0为空
-        let activePiece = null;     // 当前活动方块 { shape, x, y }
-        let nextPiece = null;
-        let score = 0;
-        let gameLoopInterval = null;
-        let isGameOver = false;
+        let activePiece = null;     // 当前活动方块 { shape, x, y, color }
+        let nextPiece = null;       // 下一个即将出现的方块（预览用）
+        let score = 0;              // 当前得分
+        let gameLoopInterval = null; // 游戏主循环定时器ID
+        let isGameOver = false;     // 游戏是否结束
         let isPaused = false;        // 未使用暂停按钮，但防呆
         
-        // 经典七种形状 + 颜色
+        /*
+         * 经典七种俄罗斯方块形状 + 对应颜色
+         * 每种方块用 4×4 的二维数组表示，1 为有方块，0 为空
+         * I(青色长条) O(黄色方块) T(紫色T形) S(绿色S形) Z(红色Z形) L(橙色L形) J(蓝色J形)
+         */
         const TETROMINOS = [
-            {   // I
+            {   // I 形：长条形，4格横向排列
                 shape: [
                     [0,0,0,0],
                     [1,1,1,1],
                     [0,0,0,0],
                     [0,0,0,0]
                 ],
-                color: '#2bd1fc' 
+                color: '#2bd1fc'  // 青色
             },
-            {   // O
+            {   // O 形：正方形，2×2方块
                 shape: [
                     [0,0,0,0],
                     [0,1,1,0],
                     [0,1,1,0],
                     [0,0,0,0]
                 ],
-                color: '#f7e476' 
+                color: '#f7e476'  // 黄色
             },
-            {   // T
+            {   // T 形：T字形，中间凸出
                 shape: [
                     [0,0,0,0],
                     [0,1,0,0],
                     [1,1,1,0],
                     [0,0,0,0]
                 ],
-                color: '#cd6ef7' 
+                color: '#cd6ef7'  // 紫色
             },
-            {   // S
+            {   // S 形：S形弯曲
                 shape: [
                     [0,0,0,0],
                     [0,1,1,0],
                     [1,1,0,0],
                     [0,0,0,0]
                 ],
-                color: '#6fcf97' 
+                color: '#6fcf97'  // 绿色
             },
-            {   // Z
+            {   // Z 形：Z形弯曲（S的镜像）
                 shape: [
                     [0,0,0,0],
                     [1,1,0,0],
                     [0,1,1,0],
                     [0,0,0,0]
                 ],
-                color: '#e6675a' 
+                color: '#e6675a'  // 红色
             },
-            {   // L
+            {   // L 形：L形，右下凸出
                 shape: [
                     [0,0,0,0],
                     [1,0,0,0],
                     [1,1,1,0],
                     [0,0,0,0]
                 ],
-                color: '#f0a35e' 
+                color: '#f0a35e'  // 橙色
             },
-            {   // J
+            {   // J 形：J形（L的镜像），左下凸出
                 shape: [
                     [0,0,0,0],
                     [0,0,1,0],
                     [1,1,1,0],
                     [0,0,0,0]
                 ],
-                color: '#5b8cff' 
+                color: '#5b8cff'  // 蓝色
             }
         ];
         
-        // 随机获取一个方块
+        /*
+         * 随机获取一个方块
+         * 从 TETROMINOS 数组中随机选取一种形状
+         * 使用深拷贝避免修改原始形状数据（旋转时会修改 shape 数组）
+         */
         function getRandomTetromino() {
             const idx = Math.floor(Math.random() * TETROMINOS.length);
             const original = TETROMINOS[idx];
@@ -287,45 +349,55 @@
             };
         }
         
-        // 初始化新游戏 (重置所有)
+        /*
+         * 初始化新游戏（重置所有状态）
+         * 清空棋盘、重置分数、生成初始方块、启动游戏主循环定时器
+         * 每 450ms 触发一次 gameTick，控制方块自动下落
+         */
         function initGame() {
-            // 清空棋盘
+            // 清空棋盘：创建 20×10 的全零二维数组
             board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
             score = 0;
             updateScoreUI();
             isGameOver = false;
             statusDiv.innerText = '🎮 游戏中';
             statusDiv.style.color = '#ffe1a0';
-            
-            // 生成第一组方块
+
+            // 生成第一组方块：先生成 nextPiece，再由 spawnNewPiece 将其转为 activePiece
             nextPiece = getRandomTetromino();
             spawnNewPiece();
-            
-            // 清除旧的循环计时器
+
+            // 清除旧的循环计时器（防止重复启动多个定时器）
             if (gameLoopInterval) clearInterval(gameLoopInterval);
-            // 启动下落间隔 (经典速度 500ms)
+            // 启动下落间隔 (每450ms下落一格，约经典速度)
             gameLoopInterval = setInterval(gameTick, 450);
             
             drawAll();
         }
         
-        // 生成新块: 将 nextPiece 赋值给 activePiece，并随机生成下一个
+        /*
+         * 生成新方块
+         * 将 nextPiece 赋值给 activePiece（当前操作的方块）
+         * 然后随机生成新的 nextPiece 供预览显示
+         * 新方块出现在棋盘顶部居中位置
+         * 如果新方块刚出现就发生碰撞，则判定为游戏结束
+         */
         function spawnNewPiece() {
             if (!nextPiece) {
                 nextPiece = getRandomTetromino();
             }
-            // 活动块 = 当前的next
+            // 活动块 = 当前的next（深拷贝 shape 数组）
             const newShape = nextPiece.shape.map(row => [...row]);
             activePiece = {
                 shape: newShape,
                 color: nextPiece.color,
-                x: Math.floor((COLS - newShape[0].length) / 2),
-                y: 0
+                x: Math.floor((COLS - newShape[0].length) / 2),  // 水平居中
+                y: 0                                               // 从顶部开始
             };
-            // 生成下一个块
+            // 随机生成下一个块（用于右侧预览窗口）
             nextPiece = getRandomTetromino();
-            
-            // 生成时立即检测是否碰撞 (Game Over)
+
+            // 生成时立即检测是否碰撞——如果刚生成就碰撞说明顶部堆满了，判定 Game Over
             if (collision(activePiece.shape, activePiece.x, activePiece.y)) {
                 isGameOver = true;
                 if (gameLoopInterval) clearInterval(gameLoopInterval);
@@ -339,7 +411,13 @@
             return true;
         }
         
-        // 碰撞检测: shape, offsetX, offsetY
+        /*
+         * 碰撞检测函数
+         * 检查给定形状在指定偏移位置是否会发生碰撞
+         * 碰撞条件：超出棋盘边界（左/右/下）或与已固定的方块重叠
+         * 参数：shape - 方块形状二维数组, offsetX - 水平偏移, offsetY - 垂直偏移
+         * 返回：true 表示发生碰撞，false 表示安全
+         */
         function collision(shape, offsetX, offsetY) {
             for (let row = 0; row < shape.length; row++) {
                 for (let col = 0; col < shape[0].length; col++) {
@@ -359,7 +437,12 @@
             return false;
         }
         
-        // 固定当前活动块到棋盘
+        /*
+         * 固定当前活动方块到棋盘
+         * 当方块无法继续下落时，将其"烧录"到棋盘数据中
+         * 同时将方块的颜色记录到 colorBoard 中，用于后续渲染
+         * 固定后自动触发消行检测和新方块生成
+         */
         function mergePiece() {
             if (!activePiece) return;
             for (let row = 0; row < activePiece.shape.length; row++) {
@@ -391,10 +474,23 @@
             drawAll();
         }
         
-        // 颜色棋盘 (用于存储每个格子的颜色)
+        /*
+         * 颜色棋盘：与 board 同尺寸的二维数组
+         * 用于存储棋盘上每个已固定格子的颜色值
+         * 渲染时根据此数组为固定方块着色，使不同方块保留各自颜色
+         */
         let colorBoard = Array(ROWS).fill().map(() => Array(COLS).fill('#333333'));
         
-        // 消除满行并更新分数
+        /*
+         * 消除满行并更新分数
+         * 从底部向上逐行检查，如果某行全部填满则消除
+         * 消除方式：将该行上方的所有行整体下移一行，顶部补空行
+         * 计分规则（经典俄罗斯方块）：
+         *   消1行 = 100分
+         *   消2行 = 300分
+         *   消3行 = 500分
+         *   消4行（Tetris！）= 800分
+         */
         function clearLines() {
             let linesCleared = 0;
             for (let row = ROWS-1; row >= 0; ) {
@@ -429,7 +525,14 @@
             }
         }
         
-        // 移动尝试
+        /*
+         * 移动方块
+         * 尝试将当前活动方块移动 (dx, dy) 的偏移量
+         * 如果移动后不碰撞，则更新位置并重绘
+         * 如果向下移动时碰撞，说明方块已到底，调用 mergePiece 固定
+         * 参数：dx - 水平偏移（-1左，+1右），dy - 垂直偏移（+1向下）
+         * 返回：true 移动成功，false 移动失败（被阻挡或已固定）
+         */
         function movePiece(dx, dy) {
             if (!activePiece || isGameOver) return false;
             const newX = activePiece.x + dx;
@@ -448,7 +551,12 @@
             return false;
         }
         
-        // 旋转
+        /*
+         * 旋转方块（顺时针90度）
+         * 使用矩阵转置+反转实现顺时针旋转
+         * 包含简单的踢墙（wall kick）处理：如果旋转后碰撞，尝试左移或右移一格
+         * 踢墙机制防止方块贴墙时无法旋转的问题
+         */
         function rotatePiece() {
             if (!activePiece || isGameOver) return;
             // 矩阵旋转90度
@@ -473,7 +581,12 @@
             drawAll();
         }
         
-        // 硬到底
+        /*
+         * 硬降（Hard Drop）：按空格键触发
+         * 将方块瞬间移动到当前列的最底部（一落到底）
+         * 通过循环下移直到发生碰撞，然后立即固定
+         * 这是高级玩家常用的操作，可以快速放置方块
+         */
         function hardDrop() {
             if (!activePiece || isGameOver) return;
             while (!collision(activePiece.shape, activePiece.x, activePiece.y + 1)) {
@@ -484,7 +597,12 @@
             drawAll();
         }
         
-        // 游戏滴答下落
+        /*
+         * 游戏主循环（定时器回调）
+         * 每 450ms 被调用一次，驱动方块自动下落一格
+         * 这是游戏的核心节奏，控制方块的自然下落速度
+         * 如果方块无法下移，movePiece 内部会自动调用 mergePiece 固定
+         */
         function gameTick() {
             if (isGameOver) return;
             if (!activePiece) return;
@@ -493,7 +611,17 @@
             drawAll();
         }
         
-        // ---------- 渲染 ----------
+        /*
+         * ========== 渲染模块 ==========
+         * 负责将游戏数据绘制到 Canvas 画布上
+         */
+
+        /*
+         * 绘制主游戏棋盘
+         * 渲染顺序：清空画布 → 绘制网格线 → 绘制已固定的方块 → 绘制活动方块 → 游戏结束遮罩
+         * 已固定方块带有顶部高光效果，增强立体感
+         * 活动方块颜色更亮，与固定方块视觉区分
+         */
         function drawBoard() {
             ctx.clearRect(0, 0, 300, 600);
             // 绘制网格线
@@ -561,6 +689,11 @@
             }
         }
         
+        /*
+         * 绘制"下一个方块"预览
+         * 在 120×120 的小画布上居中绘制 nextPiece
+         * 计算偏移量使方块在预览区域中水平和垂直居中
+         */
         function drawNext() {
             nextCtx.clearRect(0, 0, 120, 120);
             nextCtx.fillStyle = '#0e1a16';
@@ -585,16 +718,23 @@
             }
         }
         
+        // 更新得分显示：将当前分数写入页面 DOM
         function updateScoreUI() {
             scoreSpan.innerText = score;
         }
-        
+
+        // 统一重绘：同时刷新主棋盘和下一个方块预览
         function drawAll() {
             drawBoard();
             drawNext();
         }
         
-        // ---------- 重置游戏 ----------
+        /*
+         * 重置游戏（不刷新页面）
+         * 清除定时器、重置棋盘和颜色棋盘、分数归零
+         * 重新生成方块并启动新的游戏循环
+         * 通过"新一局"按钮或按 R 键触发
+         */
         function resetGame() {
             if (gameLoopInterval) {
                 clearInterval(gameLoopInterval);
@@ -616,7 +756,18 @@
             drawAll();
         }
         
-        // ----- 键盘控制 与 防止页面滚动 ----
+        /*
+         * 键盘事件处理函数
+         * 将键盘按键映射到游戏操作：
+         *   ArrowLeft  → 左移
+         *   ArrowRight → 右移
+         *   ArrowDown  → 加速下落（软降）
+         *   ArrowUp    → 旋转
+         *   Space      → 硬降（直接落到底部）
+         *   KeyR       → 重新开始
+         *   游戏结束时按 Space/R/Enter 重新开始
+         * 每个按键都调用 preventDefault() 防止页面滚动
+         */
         function handleKeyDown(e) {
             const key = e.code;
             if (isGameOver) {
@@ -639,7 +790,11 @@
             drawAll();
         }
         
-        // 触摸屏简单辅助 (可选，但主要支持键盘)
+        /*
+         * 绑定事件监听器
+         * 注册键盘事件到 window（全局监听）
+         * 注册"新一局"按钮的点击事件
+         */
         function attachEvents() {
             window.addEventListener('keydown', handleKeyDown);
             const resetBtn = document.getElementById('resetButton');
@@ -650,7 +805,7 @@
             }
         }
         
-        // 初始化颜色棋盘背景
+        // 初始化颜色棋盘背景：将所有格子设为深绿色背景色
         function initColorBoard() {
             for (let i = 0; i < ROWS; i++) {
                 for (let j = 0; j < COLS; j++) {
@@ -659,13 +814,18 @@
             }
         }
         
-        // 启动游戏
+        /*
+         * 游戏启动入口
+         * 按顺序执行：初始化颜色棋盘 → 初始化游戏状态 → 绑定事件 → 开始游戏循环
+         * 页面加载完成后自动调用此函数启动游戏
+         */
         function startGame() {
             initColorBoard();
             initGame();
             attachEvents();
         }
         
+        // ===== 启动游戏 =====
         startGame();
     })();
 </script>
